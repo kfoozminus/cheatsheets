@@ -5,4 +5,4 @@ git pull origin master	//first time pull - links origin(remote) with master(loca
 git add [filename]
 git status
 git commit -m "[message]"
-git push origin master
+git push --set-upstream origin master	//first time push
