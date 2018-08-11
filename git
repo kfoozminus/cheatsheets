@@ -2,3 +2,7 @@ git init
 git remote add origin [SSH]
 git remote -v	// shows remote repositories
 git pull origin master	//first time pull - links origin(remote) with master(local)
+git add [filename]
+git status
+git commit -m "[message]"
+git push origin master
