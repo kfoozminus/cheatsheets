@@ -1,0 +1,38 @@
+Query all columns for all American cities in CITY with populations larger than 100000. 
+select * from city where COUNTRYCODE = "USA" and POPULATION > 100000;
+
+Query a list of CITY and STATE from the STATION table.
+select CITY, STATE from STATION;
+
+Find the difference between the total number of CITY entries in the table and the number of distinct CITY entries in the table.
+select COUNT(CITY) - COUNT(DISTINCT CITY) from STATION; 
+
+Query a list of CITY names from STATION with even ID numbers only. You may print the results in any order, but must exclude duplicates from your answer.
+select DISTINCT CITY from STATION where ID % 2 = 0;
+
+Query the list of CITY names starting with vowels (i.e., a, e, i, o, or u) from STATION.
+select DISTINCT CITY from STATION where CITY REGEXP "^[AEIOU]";
+
+Query the list of CITY names ending with vowels (a, e, i, o, u) from STATION. Your result cannot contain duplicates.
+select DISTINCT CITY from STATION where CITY REGEXP "[AEIOU]$";
+
+Query the list of CITY names from STATION which have vowels (i.e., a, e, i, o, and u) as both their first and last characters.
+. = any character, * = any number of times.
+select DISTINCT CITY from STATION where CITY REGEXP "^[AEIOU].*[AEIOU]$";
+
+Query the list of CITY names from STATION that do not start with vowels.
+select DISTINCT CITY from STATION where CITY REGEXP "^[^AEIOU]";
+
+Query the list of CITY names from STATION that do not end with vowels.
+select DISTINCT CITY from STATION where CITY REGEXP "[^AEIOU]$";
+
+Query the list of CITY names from STATION that either do not start with vowels or do not end with vowels.
+select DISTINCT CITY from STATION where CITY REGEXP "^[^AEIOU]|[^AEIOU]$";
+
+Query the list of CITY names from STATION that do not start with vowels and do not end with vowels.
+select DISTINCT CITY from STATION where CITY REGEXP "^[^AEIOU].*[^AEIOU]$";
+
+Query the Name of any student in STUDENTS who scored higher than  Marks. Order your output by the last three characters of each name. If two or more students both have names ending in the same last three characters, secondary sort them by ascending ID.
+select Name from STUDENTS where Marks > 75 ORDER BY RIGHT(Name, 3), ID ASC;
+
+
