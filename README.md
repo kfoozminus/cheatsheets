@@ -1,3 +1,4 @@
 # cheatsheets
 
 git
+mysql
