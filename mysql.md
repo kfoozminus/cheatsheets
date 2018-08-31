@@ -97,8 +97,8 @@ select city, length(city) from station order by length(city) desc, city asc LIMI
 https://www.hackerrank.com/challenges/occupations/problem
 https://stackoverflow.com/questions/1241178/mysql-rows-to-columns/9668036#9668036
 https://www.hackerrank.com/challenges/occupations/forum/comments/394277
-```
 MIN is used to select non-null value.
+```
 SET @r1= 0,@r2= 0,@r3= 0,@r4=0;
 SELECT Min(Doctor), Min(Professor), Min(Singer), Min(Actor) 
 FROM (
