@@ -28,4 +28,4 @@ git log -p <commit-hash>	//shows changes in this commit
 git push origin master		//origin = remomte repo link(saved in local config file, master = branch name of the remote repo --- means push to MASTER branch of the ORIGIN remote, from current branch of local machine
 git push --set-upstream origin master	//first time push
 
-git amend 
+git commit --amend -m "<message>"	//amends new changes to recent commit, destructs the recent commit. shouldn't amend with a push.
