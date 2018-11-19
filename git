@@ -1,3 +1,4 @@
+git tuto: https://www.youtube.com/watch?v=7orfDC1ALvs
 git init
 git remote add origin [SSH]
 git remote -v	// shows remote repositories
