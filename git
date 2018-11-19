@@ -1,4 +1,4 @@
-git tuto: https://www.youtube.com/watch?v=7orfDC1ALvs
+git tuto: https://www.youtube.com/watch?v=7erfDC1ALvs
 
 git config --global user.email username@host.com	//--global is default
 git config --local uesr.email username @host.com	//local overwrites global
@@ -10,17 +10,19 @@ cat .git/config		//local config file
 git init
 git remote add origin <SSH>	//origin = my local name for the remote?
 git remote -v	// shows remote repositories
+git remote rm <name>	//removes this remote
 git pull origin master	//fetches changes of the MASTER branch of ORIGIN remote to current branch of local machine
 
 //start with cloning a remote repo
-git clone <ssh> <directory-name> 	//names the local folder as remote repo name if <directory-name> is not given
+git clone <ssh> <directory-name> 	//names the local folder as remote repo name if <directory-name> is not given. by default clones the master branch
+git clone -b b1 <ssh> test 	//clones the b1 branch of the remote ssh to a local folder named TEST
 
 git add [filename]
+git add	.	//add all
+git add * 	//add all
+git add -A 	//add all, "git add ." doesn't work if a file is deleted, then this command must be used
 git status
 git commit -m "<message>"
-
-git branch 	//shows local branches
-git branch -r 	//shows remote branches
 
 git log		//change history, contains commit-hash
 git log -p <commit-hash>	//shows changes in this commit
@@ -28,4 +30,38 @@ git log -p <commit-hash>	//shows changes in this commit
 git push origin master		//origin = remomte repo link(saved in local config file, master = branch name of the remote repo --- means push to MASTER branch of the ORIGIN remote, from current branch of local machine
 git push --set-upstream origin master	//first time push
 
-git commit --amend -m "<message>"	//amends new changes to recent commit, destructs the recent commit. shouldn't amend with a push.
+git commit --amend -m "<message>"	//amends new changes to latest commit, destructs the latest commit. shouldn't amend with a push.
+
+.gitignore		//this file contains all filenames that we don't want to add to git
+
+git branch 		//shows local branches
+git branch -r 		//shows remote branches
+git branch -a		//shows all branches
+git branch b1		//creates a new branch named b1, cloned from current branch
+git checkout b1		//go to b1 branch
+git checkout -b b1	//git branch b1 + git checkout b1
+git branch -D b1	//delete the branch b1
+
+git fetch 		//fetches origin
+git fetch --all		//fetches all remotes
+git fetch origin <b1>	//fetches ORIGIN's branch B1
+
+git checkout <b1>	//check if local has this branch, if not checks remote's branch, creates a local branch named b1, cloned from the remote branch
+
+//if I want to commit changes to a remote branch from local machine without adding the branch
+git checkout origin/b1		//works kinda like browsing a repo's branch, not added to local machine
+git commit -m "message"
+git push origin HEAD:b1		//using HEAD because nothing other than HEAD refers to this commit - this command will push HEAD commit to origin's b1
+
+				//this also works - if I checkout to a commit using commit hash and push
+
+git checkout -b origin/b1	//creates a local branch named "origin/b1", cloned from current branch, not remote's branch
+
+//If I want to create a branch cloned from remote's branch
+//fetch
+git checkout <remote>/<remote-branch>	//detached HEAD at remote's branch
+git checkout -b <local-branch>	//creates a new local branch, like remote's branch
+
+
+//questions
+if I checkout to origin/b1 directly and commit a change, can I create a branch from current state? (and maybe push?)
