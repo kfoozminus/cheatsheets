@@ -1,5 +1,7 @@
 git tuto: https://www.youtube.com/watch?v=7orfDC1ALvs
 git config --global user.email username@host.com
+git config --local uesr.email username @host.com
+git config --list
 git init
 git remote add origin [SSH]
 git remote -v	// shows remote repositories
