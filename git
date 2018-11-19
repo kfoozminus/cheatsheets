@@ -1,14 +1,31 @@
 git tuto: https://www.youtube.com/watch?v=7orfDC1ALvs
-git config --global user.email username@host.com
-git config --local uesr.email username @host.com
-git config --list	//shows all config
-cat ~/.gitconfig	//global config
-cat .git/config		//local config
+
+git config --global user.email username@host.com	//--global is default
+git config --local uesr.email username @host.com	//local overwrites global
+git config --list	//shows current directory config
+cat ~/.gitconfig	//global config file
+cat .git/config		//local config file
+
+//create a local folder, then merge with remote
 git init
-git remote add origin [SSH]
+git remote add origin <SSH>	//origin = my local name for the remote?
 git remote -v	// shows remote repositories
-git pull origin master	//first time pull - links origin(remote) with master(local)
+git pull origin master	//fetches changes of the MASTER branch of ORIGIN remote to current branch of local machine
+
+//start with cloning a remote repo
+git clone <ssh> <directory-name> 	//names the local folder as remote repo name if <directory-name> is not given
+
 git add [filename]
 git status
-git commit -m "[message]"
+git commit -m "<message>"
+
+git branch 	//shows local branches
+git branch -r 	//shows remote branches
+
+git log		//change history, contains commit-hash
+git log -p <commit-hash>	//shows changes in this commit
+
+git push origin master		//origin = remomte repo link(saved in local config file, master = branch name of the remote repo --- means push to MASTER branch of the ORIGIN remote, from current branch of local machine
 git push --set-upstream origin master	//first time push
+
+git amend 
