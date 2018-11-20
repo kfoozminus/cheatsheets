@@ -63,8 +63,10 @@ git checkout <remote>/<remote-branch>	//detached HEAD at remote's branch
 git checkout -b <local-branch>	//creates a new local branch, like remote's branch
 
 
-git diff		//shows local changes
-git stash save 'stashing message'
+git diff			//shows local changes
+git stash save 'stash message - could use as a name too?'
+git stash list			//shows stash lists
+git stash apply			//makes the 'last stash' dirty
 git stash apply stash@{0}	//you can drop the last term, by default it takes the latest stash
 git stash drop stash@{1}	//delete a stash
 git stash pop stash@{2}		//apply + drop
