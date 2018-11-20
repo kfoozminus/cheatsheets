@@ -65,6 +65,9 @@ git checkout -b <local-branch>	//creates a new local branch, like remote's branc
 
 git diff		//shows local changes
 git stash save 'stashing message'
+git stash apply stash@{0}	//you can drop the last term, by default it takes the latest stash
+git stash drop stash@{1}	//delete a stash
+git stash pop stash@{2}		//apply + drop
 
 
 //questions
