@@ -63,5 +63,9 @@ git checkout <remote>/<remote-branch>	//detached HEAD at remote's branch
 git checkout -b <local-branch>	//creates a new local branch, like remote's branch
 
 
+git diff		//shows local changes
+git stash save 'stashing message'
+
+
 //questions
 if I checkout to origin/b1 directly and commit a change, can I create a branch from current state? (and maybe push?)
