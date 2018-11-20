@@ -1,5 +1,9 @@
 git tuto: https://www.youtube.com/watch?v=7erfDC1ALvs
 
+//working directory - in file system
+//tracked - added once
+//git index, staged - after add
+
 git config --global user.email username@host.com	//--global is default
 git config --local uesr.email username @host.com	//local overwrites global
 git config --list	//shows current directory config
@@ -10,8 +14,12 @@ cat .git/config		//local config file
 git init
 git remote add origin <SSH>	//origin = my local name for the remote?
 git remote -v	// shows remote repositories
-git remote rm <name>	//removes this remote
+git remote rm <name>	//removes this remote; git remote remove <name>
 git pull origin master	//fetches changes of the MASTER branch of ORIGIN remote to current branch of local machine
+			//= git fetch origin + git merge master
+git remote show		//shows only names
+git remote show origin	//shows detailed informations
+git remote rename <rm1> <rm2>	//rename a remote
 
 //start with cloning a remote repo
 git clone <ssh> <directory-name> 	//names the local folder as remote repo name if <directory-name> is not given. by default clones the master branch
@@ -21,8 +29,52 @@ git add [filename]
 git add	.	//add all
 git add * 	//add all
 git add -A 	//add all, "git add ." doesn't work if a file is deleted, then this command must be used
+
+git ls-files
+
+git checkout -- <filename>	//discard all unstaged changes
+
 git status
+git status -s
+git status --short
+
+
+//to view changes
+git diff				//shows local changes, unstaged
+//add the file
+git diff --cached; git diff --staged	//shows staged changed
+//commit
+git log -p <hash>			//hash is optional
+git log --patch				//same
+git log -p -2				//shows last 2
+git log --stat -2			//shows how many files were changed/removed/added
+git log --pretty=oneline -2 		//in one line, also has short/full/fuller value
+git log --oneline
+git log --pretty=format:"%h - %an, %ar : %s"	//hash, username, time, change
+git log -pretty=oneline --graph		//shows branching graph
+git log -pretty=oneline --abbrev-commit -2		//doesn't show full hash, only first few characters
+git log --since=1.day			//1.hour, yesterday, 2018-11-19
+					//--until, --before, --after
+git log --author=kfoozminus --grep=test	//this author, commit-message contans this keyword
+git log -1 HEAD				//last commit of the HEAD
+
 git commit -m "<message>"
+git commit -a -m "<message"		//skip the staging/"add" part = add -A + commit - ONLY WORKS FOR TRACKED FILES, that means, files that was "add"ed at least once
+git commit --amend -m "<message>"	//amends new changes to latest commit, destructs the latest commit. shouldn't amend with a push.
+git commit --amend --no-edit		//keeps the previous message
+
+//remove from file system, but not from git
+rm <file>
+//remove from git, removes from file system too
+git rm <file>
+//remove from just git
+git rm --cached <file>
+
+
+
+//renaming
+git mv <file1> <file2>		//file1 is tracked file, renames in both git and file system
+//= mv <file1> <file2> + git rm <file1> + git add <file2>
 
 git log		//change history, contains commit-hash
 git log -p <commit-hash>	//shows changes in this commit
@@ -30,20 +82,30 @@ git log -p <commit-hash>	//shows changes in this commit
 git push origin master		//origin = remomte repo link(saved in local config file, master = branch name of the remote repo --- means push to MASTER branch of the ORIGIN remote, from current branch of local machine
 git push --set-upstream origin master	//first time push
 
-git commit --amend -m "<message>"	//amends new changes to latest commit, destructs the latest commit. shouldn't amend with a push.
 
 .gitignore		//this file contains all filenames that we don't want to add to git
 
+git branch --list
 git branch 		//shows local branches
 git branch -r 		//shows remote branches
 git branch -a		//shows all branches
 git branch b1		//creates a new branch named b1, cloned from current branch
 git checkout b1		//go to b1 branch
 git checkout -b b1	//git branch b1 + git checkout b1
-git branch -D b1	//delete the branch b1
+git checkout - 		//go to previous branch
+git branch -d b1	//delete a branch, if it has unmerged changes - shows warning
+git branch -D b1	//force delete the branch b1
+git branch -m <b1>	//rename current branch
+
+
+git merge <b1>		//merge b1 to current branch
+			//then I can delete b1 branch, as my current branch points to that ref
+			//if b1 doesn't have any file, that current branch has, it will merge (3-way merging --> two branch tips + common ancestor) - and it will create a new commit
+			//if b1 has everything that current-branch has, current-branch tip will fast-forward, no new commit
 
 git fetch 		//fetches origin
 git fetch --all		//fetches all remotes
+git fetch <remote-name>
 git fetch origin <b1>	//fetches ORIGIN's branch B1
 
 git checkout <b1>	//check if local has this branch, if not checks remote's branch, creates a local branch named b1, cloned from the remote branch
@@ -54,6 +116,23 @@ git commit -m "message"
 git push origin HEAD:b1		//using HEAD because nothing other than HEAD refers to this commit - this command will push HEAD commit to origin's b1
 
 				//this also works - if I checkout to a commit using commit hash and push
+				//this command will push this HEAD to origin's b1
+
+//if I have a new local branch and remote doesn't have any branch with same name
+git push origin <local-branch>	//will create a new remote branch with the same name
+//if remote has a branch named <branch>
+git push origin b1		//updates b1
+//if this branch has upstream set by-
+git push --set-upstream origin <branch>
+//then
+git push			//don't have to mention remote's branch name everytime we push
+
+git push origin :<b1>		//delete remote's branch
+git push origin --delete <b1>	//delete remote's branch
+
+
+
+
 
 git checkout -b origin/b1	//creates a local branch named "origin/b1", cloned from current branch, not remote's branch
 
@@ -63,8 +142,7 @@ git checkout <remote>/<remote-branch>	//detached HEAD at remote's branch
 git checkout -b <local-branch>	//creates a new local branch, like remote's branch
 
 
-git diff			//shows local changes
-git stash save 'stash message'	//message is optional
+git stash save 'stash message'	//message is optional, "git stash" works too
 git stash list			//shows stash lists
 git stash apply			//makes the 'last stash' dirty
 git stash apply stash@{0}	//you can drop the last term, by default it takes the latest stash
@@ -72,5 +150,50 @@ git stash drop stash@{1}	//delete a stash
 git stash pop stash@{2}		//apply + drop
 
 
+git cherry-pick <commit-hash>	//apply <commit-hash>'s changes
+git revert <commit-hash>	//undo this commit's changes
+
+//conflicts happen when two developers make changes in same file
+//If two branch has changes in different files, then we can do cherry-pick or revert
+git checkout --theirs--.	//keep remote's changes
+git checkout --ours--.		//keep local changes
+				//otherwise manually
+
+//after commit
+git reset --hard <commit-hash>		//resets index and working tree everything after <commit-hash> - uncommit + unadd + delete the file
+git reset --soft <commit-hash>		//doesn't reset, changes head - uncommit. file is "to be committed"
+git reset --mixed <hash>		//--mixed is default. resets only index. uncommit + unadd. file is "to be added"
+
+
+
+//creating tags
+git tag				//lists tags
+git tag -l "v8.*"		//lists tags with that wildcard expression
+git tag --list "v8.*"
+git tag v8.0.1			//create a tag to the commit HEAD is referencing - lightweight tag
+git tag -a v8.0.1 -m "tag message"	//create annotated tags to HEAD, saves tagger/time/message - best practice
+git tag -a <tag-identifier> <hash>	//taggin old commits
+git tag -a -f <tag-identifier>		//use used <tag-identifier> for another commit, -f means force, it will remove the tag from previous commit
+git push origin <tag-id>		//push this new tag to remote
+git push origin --tags
+git push --tags				//push all tags that are not in remote
+git checkout <tag-id>			//checks out to this tag
+					//This puts the repo in a detached HEAD state.
+					//This means any changes made will not update the tag.
+					//They will create a new detached commit.
+					//This new detached commit will not be part of any branch and will only be reachable directly by the commits SHA hash.
+					//Therefore it is a best practice to create a new branch anytime you're making changes in a detached HEAD state.
+git checkout -b <new-branch> <tag-id>	//create new branch from this tag
+
+git tag -d <tag-id>			//deletes this tag
+git show <tag-id>			//shows details of this tag
+
+
+
+git config --global alias.st status	//type "git st" for "git status"
+
+
 //questions
 if I checkout to origin/b1 directly and commit a change, can I create a branch from current state? (and maybe push?)
+how to avoid auto merge?
+if two different branches changes different part of a same file, will it conflict during merge???
