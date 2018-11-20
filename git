@@ -30,7 +30,8 @@ git add	.	//add all
 git add * 	//add all
 git add -A 	//add all, "git add ." doesn't work if a file is deleted, then this command must be used
 
-git ls-files
+git ls-files	//local file info
+git ls-remote	//remote file info
 
 git checkout -- <filename>	//discard all unstaged changes
 
@@ -89,6 +90,7 @@ git branch --list
 git branch 		//shows local branches
 git branch -r 		//shows remote branches
 git branch -a		//shows all branches
+git branch -vv		//shows tracking branches - and which remote branch it tracks
 git branch b1		//creates a new branch named b1, cloned from current branch
 git checkout b1		//go to b1 branch
 git checkout -b b1	//git branch b1 + git checkout b1
@@ -101,7 +103,14 @@ git branch -m <b1>	//rename current branch
 git merge <b1>		//merge b1 to current branch
 			//then I can delete b1 branch, as my current branch points to that ref
 			//if b1 doesn't have any file, that current branch has, it will merge (3-way merging --> two branch tips + common ancestor) - and it will create a new commit
+			//new snapshot = new commit
 			//if b1 has everything that current-branch has, current-branch tip will fast-forward, no new commit
+
+
+git branch -v		//shows last commit of every branch
+git branch --merged	//shows list of branches that are merged to current branch
+git branch --no-merged	//shows list of branches that are not merged to current branch
+git branch --no-merged <b1>	//shows list of branches that are not merged to <b1> branch
 
 git fetch 		//fetches origin
 git fetch --all		//fetches all remotes
@@ -127,6 +136,9 @@ git push --set-upstream origin <branch>
 //then
 git push			//don't have to mention remote's branch name everytime we push
 
+git push origin serverfix:serverfix	//take local's serverfix and push to remote's serverfix
+git push origin serverfix:awesome	//take local's serverfix and push to remote's awesome
+
 git push origin :<b1>		//delete remote's branch
 git push origin --delete <b1>	//delete remote's branch
 
@@ -140,6 +152,14 @@ git checkout -b origin/b1	//creates a local branch named "origin/b1", cloned fro
 //fetch
 git checkout <remote>/<remote-branch>	//detached HEAD at remote's branch
 git checkout -b <local-branch>	//creates a new local branch, like remote's branch
+git checkout -b <local-branch> origin/<branch>	//creates a <local-branch> from origin/<branch>
+						//shortcut for the previous two
+git checkout --track origin/<branch>		//creates a local branch from origin/branch with same name - shortcut for previous - only can't name local's explicitly
+git checkout <b1>				//shortcut for the previous shortcut - first it will check if local has b1, if it doesn't, then if remote has exactly same name branch, then local will create it like remote's
+						//with these command, both push/pull has these local-remote upstream set
+git branch <local> --set-upstream-to <remote>	//tracks the remote branch - that will set only pull???
+git branch -vv					//shows tracking branches - and which remote branch it tracks
+						//so if a branch doesn't track any remote branch, it cannot pull
 
 
 git stash save 'stash message'	//message is optional, "git stash" works too
@@ -154,7 +174,6 @@ git cherry-pick <commit-hash>	//apply <commit-hash>'s changes
 git revert <commit-hash>	//undo this commit's changes
 
 //conflicts happen when two developers make changes in same file
-//If two branch has changes in different files, then we can do cherry-pick or revert
 git checkout --theirs--.	//keep remote's changes
 git checkout --ours--.		//keep local changes
 				//otherwise manually
