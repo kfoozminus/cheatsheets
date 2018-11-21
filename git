@@ -107,6 +107,16 @@ git merge <b1>		//merge b1 to current branch
 			//if b1 has everything that current-branch has, current-branch tip will fast-forward, no new commit
 
 
+git rebase <b1>		//makes b1 the new base of current master - that way we can avoid three-way merge and do a fast-forward
+git rebase <base> <b1>	//makes <base> the new base of <b1> - without having to checkout
+git rebase --onto <base> <b1> <b2>	//take b2, figure out the patches since it diverged from b1, ans make <base> the new base of these patches
+git rebase remote/<b1>	//progit page 98 - complex
+git pull --rebase	//git fetch + git rebase remote/<b1>
+git config --global pull.rebase true	//makes "git pull" behave like the previous command
+					//fixes the problem of rebasing
+					//best practice is to use rebase in private work - that has never been made public(which other people might have pulled)
+
+
 git branch -v		//shows last commit of every branch
 git branch --merged	//shows list of branches that are merged to current branch
 git branch --no-merged	//shows list of branches that are not merged to current branch
@@ -138,6 +148,7 @@ git push			//don't have to mention remote's branch name everytime we push
 
 git push origin serverfix:serverfix	//take local's serverfix and push to remote's serverfix
 git push origin serverfix:awesome	//take local's serverfix and push to remote's awesome
+					//progit page 87
 
 git push origin :<b1>		//delete remote's branch
 git push origin --delete <b1>	//delete remote's branch
@@ -157,7 +168,7 @@ git checkout -b <local-branch> origin/<branch>	//creates a <local-branch> from o
 git checkout --track origin/<branch>		//creates a local branch from origin/branch with same name - shortcut for previous - only can't name local's explicitly
 git checkout <b1>				//shortcut for the previous shortcut - first it will check if local has b1, if it doesn't, then if remote has exactly same name branch, then local will create it like remote's
 						//with these command, both push/pull has these local-remote upstream set
-git branch <local> --set-upstream-to <remote>	//tracks the remote branch - that will set only pull???
+git branch <local> --set-upstream-to <remote/branch>	//tracks the remote branch - that will set only pull???
 git branch -vv					//shows tracking branches - and which remote branch it tracks
 						//so if a branch doesn't track any remote branch, it cannot pull
 
@@ -208,7 +219,6 @@ git tag -d <tag-id>			//deletes this tag
 git show <tag-id>			//shows details of this tag
 
 
-
 git config --global alias.st status	//type "git st" for "git status"
 
 
@@ -216,3 +226,4 @@ git config --global alias.st status	//type "git st" for "git status"
 if I checkout to origin/b1 directly and commit a change, can I create a branch from current state? (and maybe push?)
 how to avoid auto merge?
 if two different branches changes different part of a same file, will it conflict during merge???
+progit page 98 - git rebase remote/<b1>
