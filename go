@@ -115,6 +115,7 @@ specifier =
 	%v for any value (input/output)
 	%T for printing type (doesn't work with Println, have to use Printf
 		//for alised type - it prints "package_name.alias_name"
+    %X for printing hexadecimal format of a number
 
 
 const (
@@ -216,9 +217,121 @@ ar[:] means ar[0:len]
 //if we want to allocate
 slice := make([]int, 5, 10)     //5 is length and 10 is capacity - capacity is optional
 //The make function takes a type, a length, and an optional capacity. When called, make allocates an array and returns a slice that refers to that array.
+//make creates emply slice while previous declaration created nil slice
 
 
 slice2 = append(slice1, ...)      //if slice2 crosses capacity of slice1, only slice2 will be copied to another location - otherwise both points to same location
+                                //if copied - capacity will be doubled
+
+
+copy(slice2, slice1)        //not same memory location
+
+a := []string{"John", "Paul"}
+b := []string{"George", "Ringo", "Pete"}
+a = append(a, b...) // equivalent to "append(a, b[0], b[1], b[2])"
+// a == []string{"John", "Paul", "George", "Ringo", "Pete"}
+
+
+//... signifies both pack and unpack operator but if three dots are in the tail position, it will unpack a slice.
+
+//unpack operator will use reference of the slice - that means, underlying array of the slice.
+
+
+//cap value is important when appending. len value is important when copying.
+
+re-slicing a slice doesn't make a copy of the underlying array. The full array will be kept in memory until it is NO LONGER REFERENCED.
+
+//delete 2nd element
+slice = append(slice[:2], slice[3:]...)
+
+
+slice1 == slice2    //can't write this, only can compare to nil
+
+slice1 := slice2    //allows assignment like object in C++
+
+s1 := [][]int{
+    []int{1, 2},
+    []int{3, 4},
+    []int{5, 6},
+}
+s2 := [][]int{
+    {1, 2},
+    {3, 4},
+    {5, 6},
+}
+
+
+var mapp map[string]int     //creates nil map
+mapp := make(map[string]int)    //creates empty map
+
+
+Like slice, map can be only compared with nil.
+
+Order of retrieval of elements in map is random when used in for iteration. Hence there is no guarantee that each time, they will be in order. That explains why we can’t compare two maps.
+
+
+map1 = map2             //allowed like C++ object, reference copied
+                        //to copy map, use for loop
+
+
+
+mapMap := map[string]map[string]string {
+    "H" : map[string]string {
+        "name" : "hydrogen",
+        "state": "gas",
+    },
+}
+
+
+func f2() (r int) {
+    r = 1
+    return
+}
+
+
+func f() (int, int) {
+    return 5, 6
+}
+func main() {
+    x, y := f()
+}
+
+
+defer is a keyword in Go that makes a function executes in the end of the execution of parent function or when parent function hits return statement.
+
+multiple defer function will be executed in stack/reverse order.
+
+defer has 3 advantages: (1) it keeps our Close call near our Open call so its easier to understand, (2) if our function had multiple return statements (perhaps one in an if and one in an else ) Close will happen before both of them and (3) deferred functions are run even if a run-time panic occurs.
+
+
+functions has type too.
+they can be arguments or return value too.
+
+"add is a anonymous function as it was created from a function that lacked name"
+
+immediately invoked function.
+
+
+func main() {
+    x := 0
+    increment := func() int {
+        x++
+        return x
+    }
+    fmt.Println(increment())
+    fmt.Println(increment())
+}
+
+A function like this together with the non-local variables it references is known as a closure. In this case increment and the variable x form the closure.
+
+
+Variadic functions are also functions but they can take infinite or variable number of arguments.
+One important thing to notice is that only the last argument of a function is allowed to be variadic.
+
+
+Closure and recursion are powerful programming techniques which form the basis of a paradigm known as functional programming.
+
+panic generates error. recover collects the panic message.
 
 
 TODO: go get
@@ -237,3 +350,4 @@ You are not allowed to re-declare global variable with same name in the same pac
 what the fuck is that?
 
 
+blog er slice purata pori nai.
