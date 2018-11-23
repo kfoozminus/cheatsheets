@@ -116,6 +116,7 @@ specifier =
 	%T for printing type (doesn't work with Println, have to use Printf
 		//for alised type - it prints "package_name.alias_name"
     %X for printing hexadecimal format of a number
+    %c for character
 
 
 const (
@@ -303,6 +304,14 @@ multiple defer function will be executed in stack/reverse order.
 
 defer has 3 advantages: (1) it keeps our Close call near our Open call so its easier to understand, (2) if our function had multiple return statements (perhaps one in an if and one in an else ) Close will happen before both of them and (3) deferred functions are run even if a run-time panic occurs.
 
+func main() {
+    defer func() {
+        str := recover()
+        fmt.Println(str)
+    }()
+    panic("PANIC")
+}
+
 
 functions has type too.
 they can be arguments or return value too.
@@ -334,6 +343,54 @@ Closure and recursion are powerful programming techniques which form the basis o
 panic generates error. recover collects the panic message.
 
 
+go provides new function which allocates a memory and return pointer. Syntax of new function is
+func new(Type) *Type
+x := new(int)       //so x will be a pointer
+
+
+
+var ptr *int        //ptr = nil
+                    //it is not pointing to any value at this moment
+
+
+
+Go is a garbage collected programming language which means memory is cleaned up automatically when nothing refers to it anymore.
+
+
+zero-value of struct is zero value of every field.
+
+
+we can also mix named fields and annonymous fields
+type Employee struct {
+	firstName, lastName string
+	salary              int
+	bool
+}
+
+
+structs can be compared with ==
+
+
+type Employee struct {
+	firstName string `json:"firstName"`
+	lastName  string `json:"lastName"`
+	salary    int    `json: "salary"`
+	fullTime  int    `json: "fullTime"`
+}
+
+
+if variable is lowercase - it highest scope is within package
+if uppercase - it can be exported outside of package
+
+
+//It should be obvious from above error that in order to successfully implement an interface, you need to implement all methods declared by the interface.
+
+//Interface has two types. A static type of interface is interface itself, for example Shape in above program. A interface do not have a static value, rather it points to a dynamic value. A variable of interface type can hold value of the Type that implements the interface. The value of that Type becomes dynamic value of the interface and that type becomes the dynamic type of the interface.
+
+//Interface works in the similar way by dynamically holding reference to underlying type.
+
+//dynamic type of interface also called as concrete type as when we access type of interface, it returns type of it’s underlying dynamic value and it’s static type remains hidden.
+
 TODO: go get
 
 
@@ -351,3 +408,4 @@ what the fuck is that?
 
 
 blog er slice purata pori nai.
+blog er string
