@@ -76,6 +76,7 @@ var x int
 var x int = 5
 var x = 5		//only works if initialized, picks up type from value
 x := 5			//only if initialized - valid only if at least one variable wasn't declared before
+			//only works inside functions and in small letter/local variables
 
 
 var x, y, z int
