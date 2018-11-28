@@ -30,6 +30,11 @@ go run main.go
 go install main.go
 
 
+main.go is not necessary anywhere
+main function is not necessary in a non-main package.
+Exactly One main function is necessary in a main package
+
+
 
 
 
