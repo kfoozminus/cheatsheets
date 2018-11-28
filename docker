@@ -1,0 +1,5 @@
+kernel has access to all physical resources
+docker only exposes computer's kernel - nothing else - not even os - that's why your containers need os
+but every os(container and host) must have the same kernel
+dockerfile indicates how to build the container
+"docker build" command passes the dockerfile to docker engine, docker engine follows the instructions in dockerfile and builds the docker image, which starts the container
