@@ -4,5 +4,138 @@ but every os(container and host) must have the same kernel
 dockerfile indicates how to build the container
 "docker build" command passes the dockerfile to docker engine, docker engine follows the instructions in dockerfile and builds the docker image, which starts the container
 
+
+An image is an executable package that includes everything needed to run an application
+A container is a runtime instance of an image
+A container runs natively on Linux and shares the kernel of the host machine with other containers.
+
+
+
+
+
+
+
+docker info
+docker --version
 docker search redis     //search with a keyword in dockerhub
-docker ps       //see all running containers
+docker run -d redis     //-d to run in background
+
+docker image ls     //downloaded images
+docker container ls --all       //shows all the containers ever ran
+                                //-aq shows in quiet mode - just the container id
+docker container ls             //shows all the container running
+docker ps
+docker ps -a                    //same as docker container list
+
+
+
+docker build -t <iamgename> .
+docker tag <image> <username/repository:tag>
+docker run --name <jenny> <hello-world>     //names your container
+docker run -p 5050:8080 <hello-world>       //port-mapping - 5050(host) to 8080(container)
+docker container stop <container-id>        //stops this running container
+docker container stop <container-name>      //same
+
+docker run -P booklist-alpine
+
+docker login
+
+
+https://docker-curriculum.com/
+docker pull busybox                             //pulls
+docker run busybox echo hello tahsin            //can attach a comamnd
+docker run -it busybox sh
+docker ps -a                //all
+docker ps -a -q             //quiet mode - returns only id
+docker ps -a -q -f status=exited
+--- docker ps -aqf status=exited
+docker rm <id>              //removes this container
+docker rm $(docker ps -aqf status=exited)
+docker container prune      //same as previous
+docker rmi <image-name>     //deletes images
+
+
+
+
+
+//make the dockerfile
+
+
+RUN vs CMD vs ENTRYPOINT
+http://goinbigdata.com/docker-run-vs-cmd-vs-entrypoint/
+Dockerfile:
+
+CMD sets default command and/or parameters, which can be overwritten from command line when docker container runs.
+ENTRYPOINT configures a container that will run as an executable.
+
+Exec form of ENTRYPOINT allows you to set commands and parameters and then use either form of CMD to set additional parameters that are more likely to be changed. ENTRYPOINT arguments are always used, while CMD ones can be overwritten by command line arguments provided when Docker container runs.
+
+Shell form of ENTRYPOINT ignores any CMD or docker run command line arguments.
+
+Use RUN instructions to build your image by adding layers on top of initial image.
+
+Prefer ENTRYPOINT to CMD when building executable Docker image and you need a command always to be executed. Additionally use CMD if you need to provide extra default arguments that could be overwritten from command line when docker container runs.
+
+Choose CMD if you need to provide a default command and/or arguments that can be overwritten from command line when docker container runs.
+
+
+
+
+
+
+
+
+
+
+
+
+COPY
+
+WORKDIR /bin/
+//The WORKDIR instruction sets the working directory for any RUN, CMD, ENTRYPOINT, COPY and ADD instructions that follow it in the Dockerfile.
+
+for CMD/ENTRYPOINT space inside "" doesn't work
+CMD ["abcd", "dekj"]
+
+
+
+
+
+
+
+
+
+
+# Use an official Python runtime as a parent image
+FROM python:2.7-slim
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+
+# Make port 80 available to the world outside this container
+EXPOSE 80
+
+# Define environment variable
+ENV NAME World
+
+# Run app.py when the container launches
+CMD ["python", "app.py"]
+
+
+
+
+
+
+
+
+
+
+todo:
+
+```docker info``` shows ``WARNING: No swap limit support```
