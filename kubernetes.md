@@ -36,7 +36,7 @@
 
 ## Kubernetes Cluster
   - Before: applications were installed directly onto specific machines as packages deeply integrated into the host. Now: make the applications containerized. Deploy them into a cluster of machines.
-  - Diagram: https://d33wubrfki0l68.cloudfront.net/99d9808dcbf2880a996ed50d308a186b5900cec9/40b94/docs/tutorials/kubernetes-basics/public/images/module_01_cluster.svg
+  - ![alt text](https://d33wubrfki0l68.cloudfront.net/99d9808dcbf2880a996ed50d308a186b5900cec9/40b94/docs/tutorials/kubernetes-basics/public/images/module_01_cluster.svg)
   - Master coordinates the cluster - schedules applications, maintains desired state, scales app and rolls out new updates.
   - Nodes are the workers that run applications. It's a VM or a physical computer that serves as a worker machine in a Kubernetes cluster. It has a kubelet, that manages the node and communicates with master. Each node has docker/rkt too. A cluster has at least three nodes.
   - To deploy an application, you tell the master the start app containers. The master schedules the containers to run on the nodes. The nodes communicates with the master using k8s api, which the master exposes. Users can also communicate withe master using the api.
@@ -52,7 +52,7 @@
   - Now you can deploy apps **on top of the cluster**. You need to create a **Deployment Configuration**. This instructs how to create and update instances of your app. Then Master schedules the instances onto individual Nodes.
   - Once instances of the app are created, a Kubernetes Deployment Controller continuously monitors these instances. If a Node containing an instances goes down, the Deployment controller replaces it. This provides a self-healing mechanism.
   - Before: scripts were used to start the app, but doesn't help to recover. Now: Controller keeps them running.
-  - Diagram: https://d33wubrfki0l68.cloudfront.net/152c845f25df8e69dd24dd7b0836a289747e258a/4a1d2/docs/tutorials/kubernetes-basics/public/images/module_02_first_app.svg
+  - ![alt text](https://d33wubrfki0l68.cloudfront.net/152c845f25df8e69dd24dd7b0836a289747e258a/4a1d2/docs/tutorials/kubernetes-basics/public/images/module_02_first_app.svg)
 ### kubectl
   - kubectl is a command line interface that communicates with the cluster using the k8s api.
   - To deploy, you need to specify the container image and number of replicas to run. You can change the info by updating the Deployment.
@@ -72,20 +72,28 @@
   - A pod models an application-specific "logical host" and can contain different application which are relatively tightly coupled.
   - The contains in same Pod share an IP address and port space - co-located/co-scheduled/runs-in-same-context
   - Pods are atomic unit on K8s platform. A deployment creates Pods with containers inside them. Each pod is tied to its Node, where it is scheduled. When a Node fails, identical pods are scheduled on other available Nodes in the cluster.
-  - Diagram: https://d33wubrfki0l68.cloudfront.net/fe03f68d8ede9815184852ca2a4fd30325e5d15a/98064/docs/tutorials/kubernetes-basics/public/images/module_03_pods.svg
+  - ![alt text](https://d33wubrfki0l68.cloudfront.net/fe03f68d8ede9815184852ca2a4fd30325e5d15a/98064/docs/tutorials/kubernetes-basics/public/images/module_03_pods.svg)
 ### Nodes
   - One node is either one physical machine (laptop) or virtual machine (I can create more than one node in my laptop with VM). A node can have multiple pods and k8s master automatically handles scheduling the pods across the Nodes in the cluster, based on the resources available on each Node.
   - One node has kubelet - a process responsible for communicating with the Master. It manages pods and containers.
   - Node contains container runtime too (Docker/rkt) which pulls the container image, unpacks the container and runs the pp.
-  - Diagram: https://d33wubrfki0l68.cloudfront.net/5cb72d407cbe2755e581b6de757e0d81760d5b86/a9df9/docs/tutorials/kubernetes-basics/public/images/module_03_nodes.svg
+  - ![alt text](https://d33wubrfki0l68.cloudfront.net/5cb72d407cbe2755e581b6de757e0d81760d5b86/a9df9/docs/tutorials/kubernetes-basics/public/images/module_03_nodes.svg)
 ### Commands
   - `kubectl get pods` lists pods.
   - `kubectl describe pods` shows details (yaml?)
   - `kubectl proxy` - As pods are running in an isolated, private network - we need to proxy access to them so we can interact with them.
+    - `kubectl proxy --port=3456` adds a port
+    - default is 8001
+    - `curl localhost:8001` from browser
+  - `export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')`
+    - QJenny
+  - `curl http://localhost:<mentioned-or-default-port>/api/v1/namespaces/default/pods/$POD_NAME/proxy/` (from my laptop)
+    - QJenny - shows yaml-like things
   - `kubectl logs <pod-name>` - Anything that the application would normally send to STDOUT becomes logs for the container within the Pod (ommitted name of container as we have only one container now)
   - `kubectl exec <pod-name> <command>` - we can execute commands directly on the container once the Pod is up and running. (here we ommitted the container name as there's only one container in our pod)
     - `kubectl exec -it <pod-name> bash` - lets us use the bash inside the container(again, we have one container)
-    - we can use `localhost:8080` to from inside the container
+    - we can use `curl localhost:8080` to from inside the container (after accessing bash of the pod)
+      - as we used `4321` in our dockerfile - we would use `localhost:4321`
 
 
 
@@ -98,17 +106,62 @@
   - The set of Pods targeted by a Service is usually determined by a `LabelSelector`
   - Unique IP addresses are not exposed to outside cluster with a Service. Services can be exposed in different ways by specifying a **type** in the ServiceSpec.
     - `ClusterIP` (default) exposes the service on an internal IP in the cluster. This makes the Service onlu reachable from within the cluster.
-    - `NodePort` exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a service accessible form outside the cluster using `<NodeIP>:<NodePort`. Superset of ClusterIP.
+    - `NodePort` exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a service accessible from outside the cluster using `<NodeIP>:<NodePort`. Superset of ClusterIP.
     - `LoadBalancer` creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service. Superset of NodePort.
     - `ExternalName` exposes the service using an arbitrary name (specified by `externalName` in the spec) by returning a `CNAME` record with the name. No proxy is used. This type requires v1.7 or higher of `kube-dns`
+  - A service created without selector will also not create the corresponding Endpoints object. This allows users to manually map a Service to specific endpoints. Another possibility why there maybe no selector is you are strictly using `type:ExternalName`
+### Services and Labels
+  - ![alt text](https://d33wubrfki0l68.cloudfront.net/cc38b0f3c0fd94e66495e3a4198f2096cdecd3d5/ace10/docs/tutorials/kubernetes-basics/public/images/module_04_services.svg)
+  - Service routes traffic for a set of pods and allows pods to die and replicate in k8s without impacting the app (services exposes pods through a common port - so an application sees the service  - if a node/pod is down service is recreating those pods internally - application is not harmed)
+  - Labels are key/value pairs attached to objects. It can attached to objects at creation or later on.
+  - A Service can be created at time of deployment by using `--expose` in kubectl.
+  - ![alt text](https://d33wubrfki0l68.cloudfront.net/b964c59cdc1979dd4e1904c25f43745564ef6bee/f3351/docs/tutorials/kubernetes-basics/public/images/module_04_labels.svg)
+  - A Service is created by default when minikube starts the cluster.
+### Commands:
+  - `kubectl get services`
+  - `kubectl expose deployment/<deployment-name> --type="NodePort" --port 4321` created a new service and exposed it as NodePort type. minikube doesn't support LoadBalancer yet.
+    - QJenny - Here target-port must be same as the one we exposed in Dockerfile - the deployment is deploying a container based on the dockerfile and the container exposed the target-port mentioned - and If we are creating a Service whose job is to watch that deployment/Pods/Container, we have to watch this on same port
+    - when we are mentioning `--port` and not mentioning `--target-port`, target-port takes the --port by default
+    - my `EXPOSE` in Dockerfile is `4321`, we can access the service only if `--target-port` is `4321`
+    - QJenny - so what is --port
+    - QJenny - what is --port in `kubectl run`
+    - QJenny - So a cluster can have multiple services?
+    - services works on pods - a service can have pods from multiple nodes
+  - `kubectl describe services/<service-name>` shows details
+    - QJenny - service name or deployment name?
+  - `export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template='{{(index .spec.ports 0).nodePort}}')`
+    - `curl $(minikube ip):$NODE_PORT`
+      - `minikube ip` shows the node ip
+      - browse `192.168.99.100:30250`
+  - `kubectl describe deployment` shows name of the label among many other infos
+  - QJenny
+    - how does services work? service labels? everything has labels?
+  - `kubectl get pods -l run=<pod-label>`
+    - `kubectl get pods -l run=booklistkube2`
+  - `kubectl get services -l run=<service-label>`
+    - `kubectl get services -l run=booklistkube2`
+    - QJenny - pod-label? service-label? I guess It's deployment-name? by run=<deployment-name> we are using the default label of a pod. and I guess `run` is an attribute? Later we used `app` attribute?
+  - `export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')`
+    - QJenny
+  - `kubectl label pod <pod-name> app=<varialbe-name>` applies a new label (pinned the application version to the pod)
+    - this doesn't add this label to the service - so we are sure that : although service/pod had same label `run=booklistkube2` they are different
+    - QJenny - `app` is an attribute? what are the other attributes?
+  - `kubectl describe pods <pod-name>`
+    - if we use `-l` flag, use <pod-label>
+    - otherwise, use <pod-name>
+    - same for `kubectl get pods`
+  - `kubectl describe pods -l app=<app-label-name`
+  - `kubectl delete service -l run=<label-name>` or `app=<label-name` deletes a service
+  - `kubectl label pod <pod-name> app=v2 --overwrite` overwrites a label name
+  - `kubectl label service <service-name> app=<label-name` we can add service label too! (:D starting to get the label-things)
+  - 
 
 
 
 
 
 
-
-# Or you could start with the basics:
+# Concepts:
 - https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
 
 ## Kubernetes:
@@ -154,6 +207,8 @@
 
 
 
+# To Do:
+  - make list of all the ports
 
 
 
