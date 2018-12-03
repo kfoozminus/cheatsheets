@@ -50,13 +50,13 @@
 
 ## K8s Deployments:
   - Now you can deploy apps **on top of the cluster**. You need to create a **Deployment Configuration**. This instructs how to create and update instances of your app. Then Master schedules the instances onto individual Nodes.
-  - Once instances of the app are created, a Kubernetes Deployment Controller continuously monitors these instances. If an Node containing an instances goes down,the Deployment controller replaces it. This provides a self-healing mechanism.
+  - Once instances of the app are created, a Kubernetes Deployment Controller continuously monitors these instances. If a Node containing an instances goes down, the Deployment controller replaces it. This provides a self-healing mechanism.
   - Before: scripts were used to start the app, but doesn't help to recover. Now: Controller keeps them running.
   - Diagram: https://d33wubrfki0l68.cloudfront.net/152c845f25df8e69dd24dd7b0836a289747e258a/4a1d2/docs/tutorials/kubernetes-basics/public/images/module_02_first_app.svg
 ### kubectl
   - kubectl is a command line interface that communicates with the cluster using the k8s api.
   - To deploy, you need to specify the container image and number of replicas to run. You can change the info by updating the Deployment.
-  - `kubectl run <deployment-name> --image=<image-name> --port=<8080-or-something-else`
+  - `kubectl run <deployment-name> --image=<image-name> --port=<8080-or-something-else>`
     - `kubectl run` command creates a new Deployment. It need deployment name and app image location (if the image aren't hosted on DockerHub, needs to include full repo url). Also needs specific port to run
     - this command searched for a Node where an instance of the app could be run
     - scheduled the app to run on that Node
@@ -86,6 +86,21 @@
   - `kubectl exec <pod-name> <command>` - we can execute commands directly on the container once the Pod is up and running. (here we ommitted the container name as there's only one container in our pod)
     - `kubectl exec -it <pod-name> bash` - lets us use the bash inside the container(again, we have one container)
     - we can use `localhost:8080` to from inside the container
+
+
+
+## K8s Services:
+  - Pods are mortal. They have a lifecycle. If a node dies, pods running on that node are lost too.
+  - Replication Controller creates new pods when that happens (by rescheduling the pod on available nodes).
+  - Pods have unique IP across a K8s cluster.
+  - Front-end shouldn't care about backend replicas or if a pod is lost and created.
+  - A service in K8s defines a logical set of Pods and a policy by to access them. Service is defined using YAML.
+  - The set of Pods targeted by a Service is usually determined by a `LabelSelector`
+  - Unique IP addresses are not exposed to outside cluster with a Service. Services can be exposed in different ways by specifying a **type** in the ServiceSpec.
+    - `ClusterIP` (default) exposes the service on an internal IP in the cluster. This makes the Service onlu reachable from within the cluster.
+    - `NodePort` exposes the Service on the same port of each selected Node in the cluster using NAT. Makes a service accessible form outside the cluster using `<NodeIP>:<NodePort`. Superset of ClusterIP.
+    - `LoadBalancer` creates an external load balancer in the current cloud (if supported) and assigns a fixed, external IP to the Service. Superset of NodePort.
+    - `ExternalName` exposes the service using an arbitrary name (specified by `externalName` in the spec) by returning a `CNAME` record with the name. No proxy is used. This type requires v1.7 or higher of `kube-dns`
 
 
 
