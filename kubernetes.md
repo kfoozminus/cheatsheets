@@ -62,6 +62,8 @@
     - scheduled the app to run on that Node
     - configured the cluster to reschedule the instance on a new node when needed
     - Q: fahim couldn't run the deployment because he didn't have `EXPOSE` in his Dockerfile. After adding the line, deployment ran. And `--port` value in `kubectl run` command doesn't have to match `EXPOSE` value. Why?
+    - `kubectl run busyboxkube --image=busybox` pods doesn't run because the os container have nothing to do - it will be in `Running` status as long as it has something to do - Shudipta added a infinite loop and it ran and you can run `kubectl exec -it <pod-name> sh` and run various comamnds on sh.
+      - QJenny - fahim asked how can I access bash/sh from it and run commands
   - `kubectl get deployments` shows the deployments, their instances and state.
   - `kubectl proxy` creates a proxy - so far kubectl were communicating with k8s cluster using api, but after proxy command we can communicate with k8s api too (through browser or curl)
 
@@ -94,6 +96,7 @@
     - `kubectl exec -it <pod-name> bash` - lets us use the bash inside the container(again, we have one container)
     - we can use `curl localhost:8080` to from inside the container (after accessing bash of the pod)
       - as we used `4321` in our dockerfile - we would use `localhost:4321`
+      - `--target-port` is `4321`
 
 
 
@@ -123,7 +126,7 @@
     - QJenny - Here target-port must be same as the one we exposed in Dockerfile - the deployment is deploying a container based on the dockerfile and the container exposed the target-port mentioned - and If we are creating a Service whose job is to watch that deployment/Pods/Container, we have to watch this on same port
     - when we are mentioning `--port` and not mentioning `--target-port`, target-port takes the --port by default
     - my `EXPOSE` in Dockerfile is `4321`, we can access the service only if `--target-port` is `4321`
-    - QJenny - so what is --port
+    - QJenny - so what is --port in `kubectl expose`
     - QJenny - what is --port in `kubectl run`
     - QJenny - So a cluster can have multiple services?
     - services works on pods - a service can have pods from multiple nodes
@@ -131,7 +134,7 @@
     - QJenny - service name or deployment name?
   - `export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template='{{(index .spec.ports 0).nodePort}}')`
     - `curl $(minikube ip):$NODE_PORT`
-      - `minikube ip` shows the node ip
+      - `minikube ip` shows the node-ip
       - browse `192.168.99.100:30250`
   - `kubectl describe deployment` shows name of the label among many other infos
   - QJenny
@@ -152,12 +155,28 @@
     - same for `kubectl get pods`
   - `kubectl describe pods -l app=<app-label-name`
   - `kubectl delete service -l run=<label-name>` or `app=<label-name` deletes a service
+    - or `kubectl delete service <service-name`
   - `kubectl label pod <pod-name> app=v2 --overwrite` overwrites a label name
   - `kubectl label service <service-name> app=<label-name` we can add service label too! (:D starting to get the label-things)
-  - 
+  - `kubectl edit service <service-name> -o yaml` you can edit details of the service
+    - `-o yaml` can be ommitted
+    - used `--port=8080` - later saw that `--target-port` got the same from this comamnd and edited target-port(only) to `4321` and it worked
+  - `kubectl get service <service-name> -o yaml` shows the yaml
+  - `kubectl get deployment <deployment-name> -o yaml`
+  - `kubectl edit deployment <deployment-name> -o yaml`
+    - `-o yaml` can be ommitted
+  - `kubectl get pod <pod-name> -o yaml`
+  - `kubectl edit pod <pod-name> -o yaml`
+    - `-o yaml` can be ommitted
+  - `kubectl exec -it <pod-name> sh` - then `wget localhost:4321` (--target-port)
+  - `kubectl exec -it <pod-name> wget localhost:4321`
 
 
 
+
+
+## Scaling
+  - Scaling is accomplished by changing the number of replicas in a Deployment.
 
 
 
