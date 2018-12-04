@@ -212,29 +212,95 @@
 
 
 # Concepts:
-- https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
+  - https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/
+  - K8s Master is collection of these process: kube-apiserver, kube-controller, kube-scheduler
+  - Each non-master node has two processes:
+    - kubelet, which communicates with the K8s Master
+    - kube-proxy, a network proxy which reflects K8s networking services on each node
+  - Various parts of the K8s Control Plane, such as the K8s Master and kubelet processes, govern how K8s communicates with your cluster.
 
 ## Kubernetes:
-- Open-source platform for managing containerized workloads and services, that facilitates both declarative configuration and automation.
-- A container platform/a microservices platform/a portable cloud platform and a lot more.
-- [Google's Borg system is a cluster manager that runs hundreds of thousands of jobs, from many thousands of different applications, across a number of clusters each with up to tens of thousands of machines.]
-- Continuous Integration, Delivery, and Deployment (CI/CD)
-- why containers?
-  - The Old Way to deploy applications was to install the applications on a host using the operating-system package manager. This had the disadvantage of entangling the applications’ executables, configuration, libraries, and lifecycles with each other and with the host OS. One could build immutable virtual-machine images in order to achieve predictable rollouts and rollbacks, but VMs are heavyweight and non-portable.
-  - The New Way is to deploy containers based on operating-system-level virtualization rather than hardware virtualization. These containers are isolated from each other and from the host: they have their own filesystems, they can’t see each others’ processes, and their computational resource usage can be bounded. They are easier to build than VMs, and because they are decoupled from the underlying infrastructure and from the host filesystem, they are portable across clouds and OS distributions.
-  - Containers are small and fast. So one-to-one application-to-image relation if built.
+  - Open-source platform for managing containerized workloads and services, that facilitates both declarative configuration and automation.
+  - A container platform/a microservices platform/a portable cloud platform and a lot more.
+  - [Google's Borg system is a cluster manager that runs hundreds of thousands of jobs, from many thousands of different applications, across a number of clusters each with up to tens of thousands of machines.]
+  - Continuous Integration, Delivery, and Deployment (CI/CD)
+  - Kubernetes is not a mere orchestration system. In fact, it eliminates the need for orchestration. The technical definition of orchestration is execution of a defined workflow: first do A, then B, then C. In contrast, Kubernetes is comprised of a set of independent, composable control processes that continuously drive the current state towards the provided desired state. It shouldn’t matter how you get from A to C. Centralized control is also not required.
+  - why containers?
+    - The Old Way to deploy applications was to install the applications on a host using the operating-system package manager. This had the disadvantage of entangling the applications’ executables, configuration, libraries, and lifecycles with each other and with the host OS. One could build immutable virtual-machine images in order to achieve predictable rollouts and rollbacks, but VMs are heavyweight and non-portable.
+    - The New Way is to deploy containers based on operating-system-level virtualization rather than hardware virtualization. These containers are isolated from each other and from the host: they have their own filesystems, they can’t see each others’ processes, and their computational resource usage can be bounded. They are easier to build than VMs, and because they are decoupled from the underlying infrastructure and from the host filesystem, they are portable across clouds and OS distributions.
+    - Containers are small and fast. So one-to-one application-to-image relation if built.
+  - The name Kubernetes originates from Greek, meaning helmsman or pilot, and is the root of governor and cybernetic. K8s is an abbreviation derived by replacing the 8 letters `ubernete` with `8`
+
+
+## K8s Components
+### Master Components
+  - Master components provide the cluster's control  plane - makes global decisions, e.g. scheduling, detecting, responding
+  - Master components can be run on any machine in the cluster - usually set up scripts start all master components on the same machine and do not run user containers on this machine.
+  - `kube-apiserver` exposes k8s api - front end for k8s control plane. designed to scale horizontally, that is - it scales by deploying more instances (QJenny - vertical scaling is creating new replicas with increased resources?)
+  - `etcd` is key value store used as k8s' backing store for all cluster data.
+    - QJenny - Doc said, Always have backup plan for etcd's data for your k8s cluster.
+  - `kube-scheduler` schedules newly created pods to nodes based on indivifual and collective resource requirements, hardware/software/policy constraints, affinity and anti-affinity specifications, data locality, inter-workload interface and deadlines.
+    - QJenny
+  - `kube-controller manager` runs controllers. Logically, each controller is a seperate process, but to reduce complexity, they are all compiled into a single binary and run in a single process
+    - `Node Controller` is responsible for noticing and responding when nodes go down
+    - `Replication Controller` is responsible for maintaining correct number of pods
+    - `Endpoints Controller` populates the Endpoints object (joins Services and Pods)
+    - `Service Account & Token Controllers` create default accounts and API access tokens for new namespaces.
+    - QJenny
+  - `cloud-controller-manager` runs controllers that interact with the underlying cloud providers. It runs cloud-provider-specific controller loops only, must disable these controller loops in the kube-controller-manager by setting `--cloud-provider` flag to  `external`. It allows cloud vendors code and k8s core to evolve independent of each other. In prior releases, the core k8s code was dependent upon cloud-provider-specific code for functionality. In future releases, code specific to cloud vendors should be maintained by the cloud vendor themselves, and linked to cloud-controller-manager while running k8s. These controllers have cloud provider dependencies:
+    - `Node Controller` for checking the cloud provider to determine if a node has been deleted in the cloud after it stops responding.
+    - `Route Controller` for setting up routes in the underlying cloud infrastructure
+    - `Service Controller` for creating, updating and deleting cloud provider load balancers
+    - `Volume Controller` for creating, attaching and mounting volumes, and interacting with the cloud provider to orchestrate volumes
+    - QJenny
+
+
+### Node Components
+  - `kubelet` runs on each in the cluster, takes a set of PodSpecs and ensures that the containers are running and healthy.
+  - `kube-proxy` enables k8s service abstraction by maintaining network rules on the host and performing connection forwarding
+    - QJenny
+  - `Container Runtime` is the software that is responsible for running containers, e.g. Dcocker, rkt, runc, any OCI runtime-spec implementation
+    - QJenny
 
 
 
+### Addons
+  - Addons are pods and services that implement cluster features. They may be managed by Deployments, ReplicationControllers. Namespaced addon objects are created in `kube-system` namespace.
+    - QJenny
+  - `DNS` - all k8s clusters should have cluster DNS, as many examples rely on it. Cluster DNS is DNS server, in addition to the other DNS server(s) in your environment, which serves DNS records for k8s services. Containers started by k8s automatically include this DNS server in their DNS searches
+    - QJenny
+  - `Web UI`(Dashboard)
+  - `Container Resource Monitoring` records generic time-series metrics about containers in a central database and provides a UI for browsing that data
+    - QJenny
+  - `Cluster-level Logging` is responsible for saving container logs to central log store with search/browsing interface
+    - QJenny
+
+
+## K8s API
+  - https://kubernetes.io/docs/concepts/overview/kubernetes-api/
+    - QJenny
+  - API continuously changes
+  - to make it easier to eliminate fields or restructure resource representation, k8s supports multiple API versions, each at a different API path, such as `/api/v1` or `/apis/extensions/v1beta1`
+  - Alpha: e.g, `v1alpha1`. may be buggy.
+  - Beta: e.g, `v2beta3`. code is well tested
+  - Stable: e.g, `v1`. will appear in released software.
 
 
 
+## K8s Objects
+  - K8s objects represent the state of a cluster. They can describe
+    - what containerized applications are running on which nodes
+    - available resources
+    - policies areound how those applications behave (restart, upgrade, fault-tolerance)
+  - Objects represents the cluster's desired state
+  - `kubectl` is used to create/modify/delete the objects through api calls. alternatively, [client libraries](https://kubernetes.io/docs/reference/using-api/client-libraries/) can be used
+    - QJenny
+  - Every k8s object has two field - the object spec is provided, it describes desired state. The object status describes the actual status of the object. k8s control plane actively manages actual state to match the desired state
+    - deployment is an object. spec can have no of replicas to make. it one fails, k8s replaces the instance.
 
 
-
-
-
-
+### Describing K8s Object
+  - k8s api is used (either directly or via kubectl) to create an object. that API request must have some information as JSON in the request body. I provide the information to kubectl in a `.yaml` file. kubectl convert the info to JSON
 
 
 
