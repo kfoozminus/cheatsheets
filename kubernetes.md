@@ -115,7 +115,7 @@
   - A service created without selector will also not create the corresponding Endpoints object. This allows users to manually map a Service to specific endpoints. Another possibility why there maybe no selector is you are strictly using `type:ExternalName`
 ### Services and Labels
   - ![alt text](https://d33wubrfki0l68.cloudfront.net/cc38b0f3c0fd94e66495e3a4198f2096cdecd3d5/ace10/docs/tutorials/kubernetes-basics/public/images/module_04_services.svg)
-  - Service routes traffic for a set of pods and allows pods to die and replicate in k8s without impacting the app (services exposes pods through a common port - so an application sees the service  - if a node/pod is down service is recreating those pods internally - application is not harmed)
+  - Service routes traffic for a set of pods and allows pods to die and replicate in k8s without impacting the app (services exposes pods through a common port(in case of node port) - so an application sees the service  - if a node/pod is down service is recreating those pods internally - application is not harmed)
   - Labels are key/value pairs attached to objects. It can attached to objects at creation or later on.
   - A Service can be created at time of deployment by using `--expose` in kubectl.
   - ![alt text](https://d33wubrfki0l68.cloudfront.net/b964c59cdc1979dd4e1904c25f43745564ef6bee/f3351/docs/tutorials/kubernetes-basics/public/images/module_04_labels.svg)
@@ -177,6 +177,37 @@
 
 ## Scaling
   - Scaling is accomplished by changing the number of replicas in a Deployment.
+  - Scaling will increase the number of Pods to the new desired state - schedules them to nodes with available resources. Scaling to zero will terminate all pods.
+  - Services have an intergrated load balancer that will distribute network traffic to all pods of an exposed deployment. Services will monitor continuously the running pods using endpoints, to ensure the traffic is sent only to available pods.
+  - `kubectl get deploy` command has
+    - DESIRED shows the configured number of replicas
+    - CURRENT shows how many replicas are running now
+    - UP-TO-DATE shows the number of replicas that were updated to match the desired state
+    - AVAILABLE state shows the number of replicas AVAILABLE to the users
+  - `kubectl scale deploy/booklistkube2 --replicas=4` makes the number of pods to 4
+  - `kubectl get pods -o wide` will also show IP and NODE
+  - `kubectl get deploy booklistkube2` will now show the scaling up event
+  - `kubectl describe services <service-name>` shows 4 endpoints as `IP:4321` (4 different IP and one common port).
+    - creating replicas will automatically be added to the service
+    - QJenny - Here `port` is `--port` (I don't know what it does). TargerPort is `--targer-port` - the one we exposed in Dockerfile. NodePort is 31562. The one we're gonna use to access the service from browser. I guess NodePort is mapped to TargetPort
+  - open `kubectl get pods -w`, `kubectl get deploy -w`, `kubectl get replicaset -w` in 3 pane and scale/edit a deployment in another pane and see the changes :D
+    - replicaset name + different extension = different pod name
+    - scaling up/down doesn't change the replicaset name - because old pods are useful. but updating deployment replaces every pod - so new replicaset name and pod name.
+
+
+
+
+## Update
+  - Rolling updates allow deployments' update to take place with zero downtime by incrementally updating pods instances with new ones.
+  - By default, the max no of pods that can be unavailable during the update and the max no of new pods that can be created, is one. Both options can be configured to either number or percentage. Updates are versioned and can be reverted back to  previous version.
+  - Similar to application Scaling, if a deployment is exposed publicly, the Service will load-balance the traffic only to available Pods during the update.
+  - `kubectl set image deploy/booklistkube2 <container-name>=<new-image-name>` changes image
+  - `kubectl rollout status deploy/booklistkube2` shows rollout status
+  - `kubectl rollout undo deploy/booklistkube2` reverts back to previous version
+  - `kubectl get events`
+  - `kubectl config view`
+
+
 
 
 
