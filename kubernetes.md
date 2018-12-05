@@ -327,7 +327,7 @@
         matchLabels:
           app:
     ```
-    - [kubernetes type architecture](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
+    - [kubernetes types.go](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
     - `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
     - `kind` Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. Cannot be updated. +optional
     - `metadata` Standard object metadata. +optional
@@ -399,10 +399,43 @@
 ### DNS
   - When you create a Service, it creates a corresponding DNS entry. This entry is of the form <service-name>.<namespace-name>.svc.cluster.local, which means that if a container just uses <service-name>, it will resolve to the service which is local to a namespace.
   - This is useful for using the same configuration across multiple namespaces such as Development, Staging and Production. If you want to reach across namespaces, you need to use the fully qualified domain name (FQDN).
+  - QJenny
 
 
 ## Labels and Selectors
-  - 
+  - to specify identifying attributes of objects - meaningful and relevant (but do not directly imply semantics to the core system). used to organize and seelect subsets of objects. can be attached at creation/added/modified.
+  - key can be anything, but have to be unique (within a object). e.g, `release`, `environment`, `tier`, `partition`, `track`
+  - Labels are key/value pairs. Valid label keys have two segments: an optional prefix and name, separated by a slash (/). The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels separated by dots (.), not longer than 253 characters in total, followed by a slash (/). If the prefix is omitted, the label Key is presumed to be private to the user. Automated system components (e.g. kube-scheduler, kube-controller-manager, kube-apiserver, kubectl, or other third-party automation) which add labels to end-user objects must specify a prefix. The kubernetes.io/ prefix is reserved for Kubernetes core components.
+  - many objects can have same labels
+  - via a label selector, the client/user can identify a set of objects. the label selector is the core grouping primitive in k8s
+  - current, the API supports two types of selectors: equality-based and set-based. A label selector can be made of multiple requirements, which are comma-separated - acts as a logical AND(&&).
+    - An empty label selector selects every object in the collection
+    - A null label selector (which is only possible for optional selector fields) selects no objects (QJenny)
+    - The label selectors of two controllers must not overlap within a namespace, otherwise they will fight with each other. (QJenny - Deployment controllers? does every deployment has one controller?)
+
+
+### Equality-based requirement
+  - equality or inequality based requirements allow filtering by label keys and values. matching objects must satisfy **ALL** of the specified label constraints, though they may have additional labels as well.
+  - three kinds of operator are admitted `=`, `==`, `!=`. first two are synonyms.
+    - `environment = production` selects all resources with key equal `environment` and value equal to `production`
+    - `tier != frontend` selects all resources with key equal to `tier` and value distinct from `fronend` and all resources with no labels with the `tier` key.
+    - `environment=production, tier!=frontend` selects resources in `production` excluding `frontend`
+    - usually, pods are scheduled to nodes, based on various criteria. If we want to limit the nodes a pod can be assigned to
+		``` apiVersion: v1
+		kind: Pod
+		metadata:
+			name: cuda-test
+		spec:
+			containers:
+				- name: cuda-test
+					image: "k8s.gcr.io/cuda-vector-add:v0.1"
+					resources:
+						limits:
+							nvidia.com/gpu: 1
+			nodeSelector:
+				accelerator: nvidia-tesla-p100
+		```
+    - hi
 
 
 
