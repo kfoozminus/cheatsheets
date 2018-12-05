@@ -306,27 +306,27 @@
 apiVersion:
 kind:
 metadata:
-  name:
-  labels:
-    app:
-spec:
-  replicas:
-  template:
-    metadata:
       name:
       labels:
         app:
-    spec:
-      containers:
-        - name:
-          image:
-          imagePullPolicy: IfNotPresent
-          ports:
-          - containerPort:
-      restartPolicy: Always
-  selector:
-    matchLabels:
-      app:
+spec:
+      replicas:
+      template:
+        metadata:
+          name:
+          labels:
+            app:
+        spec:
+          containers:
+            - name:
+              image:
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort:
+          restartPolicy: Always
+      selector:
+        matchLabels:
+          app:
 ```
     - [kubernetes type architecture](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
     - `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
@@ -380,31 +380,7 @@ spec:
     - `kube-public` is crated automatically and readable by all users(including not authenticated). mostly reserved for cluster usage, in case some resources should be visible and readable publicly
   - `kubectl create ns <new_namespace_name` creates a namespace
   - `kubectl --namespace=<non-default-namespace> run <deployment-name> --image=<image-name>`
-  - `kubectl get deploy --namespace=<new-namespace>` if not mentioned, kubectl uses default namespaces. so you won't see the deployment created in previous comamnd if you don't mention this namespace name
-  - `kubectl get deploy --all-namespaces` shows all deployments under al namespaces
-  - similar `--namespace` flag for all deloy/pod/service/container commands
-  - `kubectl delete ns <new-namespace>` deletes a namespace
-  - `kubectl config view` shows the file `~/.kube/config`
-    - clusters: here we have only minikube cluster, with its certificates and server. minikube cluster is running in that ip:port. `192.168.99.100` comes from here
-    - users: kubectl communicates with k8s api, as a user(name: minikube (QJenny)). that user is defined here with its certificates and stuff
-    - context: configurations - we have one context. a context has cluster/user/namespace/name
-    - QJenny
-  - `kubectl config current-context` shows current-context field of the config file
-  - `kubectl config set-context $(kubectl config current-context) --namespace=<ns>` sets a ns as default, any changes you make/create objects will be done to this namespace
-  - most k8s resources (pods, services, replication controllers etc.) are in some namespaces. low-level resources (nodes, persistentVolumes) are not in namespace.
-    - `kubectl api-resources` shows all
-      - `--namespaced=true` shows which are in some namespace
-      - `--namespaced=false` shows which are not in a namespace
-
-
-### DNS
-  - When you create a Service, it creates a corresponding DNS entry. This entry is of the form <service-name>.<namespace-name>.svc.cluster.local, which means that if a container just uses <service-name>, it will resolve to the service which is local to a namespace.
-  - This is useful for using the same configuration across multiple namespaces such as Development, Staging and Production. If you want to reach across namespaces, you need to use the fully qualified domain name (FQDN).
-
-
-## Labels and Selectors
-  - 
-
+  - `kubectl get deploy --namespace=<new-namespace>`
 
 
 
