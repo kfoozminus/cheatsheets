@@ -301,6 +301,65 @@
 
 ### Describing K8s Object
   - k8s api is used (either directly or via kubectl) to create an object. that API request must have some information as JSON in the request body. I provide the information to kubectl in a `.yaml` file. kubectl convert the info to JSON
+  - 
+```
+apiVersion:
+kind:
+metadata:
+      name:
+      labels:
+        app:
+spec:
+      replicas:
+      template:
+        metadata:
+          name:
+          labels:
+            app:
+        spec:
+          containers:
+            - name:
+              image:
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort:
+          restartPolicy: Always
+      selector:
+        matchLabels:
+          app:
+```
+    - [kubernetes type architecture](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
+    - `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
+    - `kind` Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. Cannot be updated. +optional
+    - `metadata` Standard object metadata. +optional
+      - `name` Name must be unique within a namespace. Cannot be updated. +optional
+      - `labels` Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. +optional
+        - `app` is key of the map (Why isn't it string? QJenny)
+    - `spec` Specification of the desired behavior of the Deployment. +optional
+      - `replicas` Number of desired pods. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1. +optional
+      - `template` Template describes the pods that will be created.
+        - `metadata` Standard object's metadata. +optional
+          - `name` same
+          - `labels` same
+            - `app` same
+        - `spec` Specification of the desired behavior of the pod. +optional
+          - `containers` List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
+            - `name` Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.
+            - `image` Docker image name. This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets. +optional (QJenny)
+            - `imagePullPolicy` Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. +optional
+              - Always means that kubelet always attempts to pull the latest image. Container will fail If the pull fails.
+              - Never means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
+              - IfNotPresent means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
+            - `ports` List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Cannot be updated. +optional
+              - `containerPort` Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536. (QJenny)
+          - `restartPolicy` Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. +optional
+      - `selector` Label selector for pods. Existing ReplicaSets whose pods are selected by this will be the ones affected by this deployment. It must match the pod template's labels. (Selector selects the pods that will be controlled. if the matchLabels is a subset of a pod, then that pod will be selected and will be controlled. If we change no of replicas then these pods will be affected? QJenny)
+        - `matchLabels` matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed. +optional (QJenny)
+          - `app` is a key
+    - QJenny - what is +optional? (Nahid: +optional thakle user empty dite parbe, na dile nil hobe. +optional na thakle na dile empty hobe??? :/ )
+    - `apiVersion`, `kind`, `metadata` is required.
+
+
 
 
 
