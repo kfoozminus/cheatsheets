@@ -301,8 +301,7 @@
 
 ### Describing K8s Object
   - k8s api is used (either directly or via kubectl) to create an object. that API request must have some information as JSON in the request body. I provide the information to kubectl in a `.yaml` file. kubectl convert the info to JSON
-  - 
-```
+  - ```
 apiVersion:
 kind:
 metadata:
@@ -328,10 +327,6 @@ spec:
     matchLabels:
       app:
 ```
-
-
-
-    - hi
     - [kubernetes type architecture](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
     - `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
     - `kind` Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. Cannot be updated. +optional
