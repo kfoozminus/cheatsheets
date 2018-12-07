@@ -327,7 +327,7 @@
         matchLabels:
           app:
     ```
-    - [kubernetes types.go](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
+    - [Deployment struct](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
     - `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
     - `kind` Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. Cannot be updated. +optional
     - `metadata` Standard object metadata. +optional
@@ -354,7 +354,7 @@
               - `containerPort` Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536. (QJenny)
           - `restartPolicy` Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. +optional
       - `selector` Label selector for pods. Existing ReplicaSets whose pods are selected by this will be the ones affected by this deployment. It must match the pod template's labels. (Selector selects the pods that will be controlled. if the matchLabels is a subset of a pod, then that pod will be selected and will be controlled. If we change no of replicas then these pods will be affected? QJenny)
-        - `matchLabels` matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed. +optional (QJenny)
+        - `matchLabels` matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed. +optional. type: map[string]string
           - `app` is a key
     - QJenny - what is +optional? (Nahid: +optional thakle user empty dite parbe, na dile nil hobe. +optional na thakle na dile empty hobe??? :/ )
     - `apiVersion`, `kind`, `metadata` is required.
@@ -384,7 +384,7 @@
   - similar `--namespace` flag for all deloy/pod/service/container commands
   - `kubectl delete ns <new-namespace>` deletes a namespace
   - `kubectl config view` shows the file `~/.kube/config`
-    - clusters: here we have only minikube cluster, with its certificates and server. minikube cluster is running in that ip:port. `192.168.99.100` comes from here
+    - clusters: here we have only minikube cluster, with its certificates and server. minikube cluster is running in that ip:port. `192.168.99.100` (minikube ip) comes from here
     - users: kubectl communicates with k8s api, as a user(name: minikube (QJenny)). that user is defined here with its certificates and stuff
     - context: configurations - we have one context. a context has cluster/user/namespace/name
     - QJenny
@@ -418,7 +418,7 @@
   - equality or inequality based requirements allow filtering by label keys and values. matching objects must satisfy **ALL** of the specified label constraints, though they may have additional labels as well.
   - three kinds of operator are admitted `=`, `==`, `!=`. first two are synonyms.
     - `environment = production` selects all resources with key equal `environment` and value equal to `production`
-    - `tier != frontend` selects all resources with key equal to `tier` and value distinct from `fronend` and all resources with no labels with the `tier` key.
+    - `tier != frontend` selects all resources with key equal to `tier` and value distinct from `frontend` and all resources with no labels with the `tier` key.
     - `environment=production, tier!=frontend` selects resources in `production` excluding `frontend`
     - usually, pods are scheduled to nodes, based on various criteria. If we want to limit the nodes a pod can be assigned to
 		``` apiVersion: v1
@@ -435,9 +435,192 @@
 			nodeSelector:
 				accelerator: nvidia-tesla-p100
 		```
-    - hi
+    - [Pod Struct](https://github.com/kubernetes/kubernetes/blob/895f483fdfba055573681ef067e16d60df7985f8/staging/src/k8s.io/apiserver/pkg/apis/example/v1/types.go#L33)
+    - `kind`, `metadata` same
+    - `spec` (podSpec) same
+      - `containers` same
+        - `name`, `image` same
+        - `resources` Compute Resources required by this container. Cannot be updated. +optional
+          - `limits` Limits describes the maximum amount of compute resources allowed. +optional (this is of type ResourceList. ResourceList is a set of (resource name, quantity) pairs.) (QJenny: [Quantity](https://github.com/kubernetes/apimachinery/blob/6dd46049f39503a1fc8d65de4bd566829e95faff/pkg/api/resource/quantity.go#L88:6))
+              - `nvidia.com/gpu` is resource name, whose quantity is `1`
+      - `nodeSelector` NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. +optional
+        - `accelerator: nvidia-tesla-p100` is a node label
 
 
+### Set-based requirement
+  - set-based label requirements allow one key with multiple values.
+  - three kinds of operators are supported: `in`, `notin` and `exists` (only key needs to be mentioned) (QJenny)
+  - `environment in (production, qa)` selects all resources with key equal to `environment` and value equal to `production` OR `qa`. (of course OR, it cannot be AND, can it? a resource cannot have multiple values for one key)
+  - `tier notin (frontend, backend)` selects all resources with key equal to `tier` and values other than `frontend` and `backend` and all resources with no labels with the `tier` key
+  - `partition`  selects all resources including a label with key `partition`, no values are checked
+  - `!partition` selects all resources without the key `partition`; no values are checked
+  - comma acts like a AND
+    - so `partition, environment notin (qa)` means the key `partition` have to exist and `environment` have to be other than `qa` (QJenny, will the resources with no `environment` be selected?)
+  - Set-based requirements can be mixed with equality-based requirements. For example: `partition in (customerA, customerB), environment!=qa`
+
+
+### API
+    - LIST and WATCH both are allowed to use using labels
+    - in URL:
+      - equality-based: `?labelSelector=environment%3Dproduction,tier%3Dfrontend`
+      - set-baed: `?labelSelector=environment+in+%28production%2Cqa%29%2Ctier+in+%28frontend%29`
+    - both selector style can be used to list or watch via REST client. e.g, targeting `apiserver` with `kubectl`
+      - `kubectl get pods -l environment=production, tier=frontend`
+      - `kubectl get pods -l 'environment in (production), tier in (frontend)'`
+    - set-based requirements are more expressive - they can implement OR operator
+      - `kubectl get pods -l 'environment in (production, qa)'` selects `qa` or `production`
+      - `kubectl get pods -l 'environment, environment notin(frontend)'` selects resources which has `environment` and it cannot be `frontend` (if i wrote `environment notin(frontend)` only, it would select the resources which doesn't have `environment` key also)
+    - `services` and `replicationcontrollers` also use label selectors to select other resources as `pods`
+      - only equality-based requirements are supported (QJenny: is this restriction for deploy/pods too?)
+    - newer resources, such as `job`, `deployment`, `replicaset`, `daemon set` support set-baed requirements
+    ```
+		selector:
+			matchLabels:
+				component: redis
+			matchExpressions:
+				- {key: tier, operator: In, values: [cache]}
+				- {key: environment, operator: NotIn, values: [dev]}
+    ```
+    - `matchExpressions` is a list of label selector requirements. The requirements are ANDed. +optional
+      - `key` is the label key that the selector applies to. type: string
+      - `operator` represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+      - `values` is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. +optional (QJenny: merge patch?)
+    - All of the requirements, from both matchLabels and matchExpressions are ANDed together – they must all be satisfied in order to match.
+
+
+## Annotations
+  - to attach arbitrary non-identifying metadata to objects. Clients such as tools and libraries can retrieve this metadata.
+  - labels are used to identify and select objects. annotations are not.
+  - can include characters not permitted by labels
+  ```
+	"metadata": {
+		"annotations": {
+			"key1" : "value1",
+			"key2" : "value2"
+		}
+	}
+  ```
+  - Instead of using annotations, you could store this type of information in an external database or directory, but that would make it much harder to produce shared client libraries and tools for deployment, management, introspection, and the like. (QJenny: [examples are given](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#attaching-metadata-to-objects))
+
+
+## Field Selectors
+  - select k8s objects based on the value of one or more fields.
+  - `kubectl get pods --field-selector status.phase=Running` selects all pods for which the value of `status.phase` is `Running`
+  - `metadata.name=my-service`, `metadata.namespace!=default`, `status.phase=Pending`
+  - using unsupported fields gives error `kubectl get ingress --field-selector foo.bar=baz` gives error `Error from server (BadRequest): Unable to find "ingresses" that match label selector "", field selector "foo.bar=baz": "foo.bar" is not a known field selector: only "metadata.name", "metadata.namespace"` (QJenny: what the f is ingress)
+  - supported operator are `=`, `==`, `!=` (first two are same). `kubectl get services --field-selector metadata.namespace!=default`
+  - `kubectl get pods --field-selector metadata.namespace=default,status.phase=Running` ANDed
+  - multiple resource types can also be selected
+    - `kubectl get statefulsets,services --field-selector metadata.namespace!=default`
+  - multiple resource is also allowed for labels too: `kubectl get pod,deploy -l run=booklistkube2` also works
+
+
+## Recommended Labels
+  - https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+  - QJenny
+
+
+## K8s object management techniques
+  - A Kubernetes object should be managed using only one technique. Mixing and matching techniques for the same object results in undefined behavior.
+  - 
+  ```
+	Management techniques							Operates on						Recommended environment		Supported writers		Learning curve
+	Imperative commands								Live objects					Development projects			1+									Lowest
+	Imperative object configuration		Individual files			Production projects				1										Moderate
+	Declarative object configuration	Directories of files	Production projects				1+									Highest
+  ```
+  QJenny
+
+### Imperative commands
+  - `kubectl run nginx --image nginx`
+  - `kubectl create deployment nginx --image nginx`
+  - simple, easy to learn, single step
+  - doesn't record changes, doesn't provide template
+
+
+### Imperative object configuration
+  - `kubectl create -f nginx.yaml`
+  - `kubectl delete -f <name>.yaml -f <name>.yaml`
+  - `kubectl replace -f <name>.yaml`
+  - Warning: The imperative replace command replaces the existing spec with the newly provided one, dropping all changes to the object missing from the configuration file. This approach should not be used with resource types whose specs are updated independently of the configuration file. Services of type LoadBalancer, for example, have their externalIPs field updated independently from the configuration by the cluster. (QJenny)
+  - compared with imperative commands:
+    - can be stored, provides template
+    - must learn, additional step writing YAML
+  - compated with declarative object config:
+    - simpler and easier to learn, more mature
+    - works best on files, not directories. updates to live objects must be reflected in config file or they will be lost in next replacement (QJenny)
+  - QJenny: does flags in kubectl command overwrite corresponding .yaml file flags?
+
+
+### Declarative object configuration
+  - When using declarative object configuration, a user operates on object configuration files stored locally, however the user does not define the operations to be taken on the files. Create, update, and delete operations are automatically detected per-object by kubectl. This enables working on directories, where different operations might be needed for different objects. QJenny
+  - Note: Declarative object configuration retains changes made by other writers, even if the changes are not merged back to the object configuration file. This is possible by using the patch API operation to write only observed differences, instead of using the replace API operation to replace the entire object configuration. QJenny
+  - `kubectl diff -f configs/` to see what changes are going to be made
+  - `kubectl apply -f configs/` process all object configuration files in the configs directory
+  - `kubectl diff -R -f configs/`, `kubectl apply -R -f configs/` recursively processs directories
+  - changes made directly to live objects are retained, even if they are not merged. has better support for operating on directories and automatically detecting opeartion types (create, patch, delete) per-object
+  - harder to debug and understand results, partial updates using diffs create complex merge and patch operations.
+  - QJenny: the whole thing
+
+
+## Using Imperative commands:
+  - `run`: create a new deploy to run containers in one or more pods
+  - `expose`: create a new service to load balance traffic across pods
+  - `autoscale`: create a new autoscaler object to automatically horizontally scale a controller, such as a deployment.
+  - `create`: driven by object type
+    - `create <objecttype> [<subtype>] <instancename>`
+    - `kubectl create service nodeport <name>` QJenny: how to use?
+  - `scale` horizontally scale a controller to add or remove
+  - `annotate` add or remove an annotation
+  - `label` add or remove a label
+  - `set` set/edit an aspect (env, image, resources, selector etc) of an object
+  - `edit` directly edit the config file
+  - `patch` directly modify specific fields of a live object by using a patch string (QJenny)
+  - `delete` deletes an object
+  - `get`
+  - `describe`
+  - `logs` prints the stdout and stderr for a container running in a pod
+  - `kubectl create service clusterip <name> --clusterip="None" -o yaml --dry-run | kubectl set selector --local -f - 'environment=qa' -o yaml | kubectl create -f -`
+    - `create` command cannot take every fields as flags. used create + set to do this (using `set` command to modify objects before creation)
+    - `kubectl create service -o yaml --dry-run` command creates the config file for the service, but prints it to stdout as YAML instread sending it to k8s API
+      - `--dry-run` if it is true, only print the object that would be sent, without sending it.
+    - `kubectl set selector --local -f - -o -yaml` reads the config file from stdin, write the updated configuration to stdout as YAML
+    - `kubectl create -f -` command creates the object using the config provided via stdin
+    - QJenny: `--local`
+  - 
+  ```
+  kubectl create service clusterip <name> --clusterip="None" -o yaml --dry-run > /tmp/srv.yaml
+  kubectl create --edit -f /tmp/srv.yaml
+  ```
+    - `kubectl create service` creates the config for the service and saves it to `/tmp/srv.yaml`
+    - `kubectl create --edit` open the config file for editiog before creating
+
+
+## Using imperative object configuration
+  - `kubectl create -f <filename/url>` creates an object from a config file
+  - `kubectl replace -f <filename/url>`
+    - Warning: Updating objects with the replace command drops all parts of the spec not specified in the configuration file. This should not be used with objects whose specs are partially managed by the cluster, such as Services of type LoadBalancer, where the externalIPs field is managed independently from the configuration file. Independently managed fields must be copied to the configuration file to prevent replace from dropping them. QJenny
+  - `kubectl delete -f <filename/url>` QJenny - how does this work?
+    - ever if changes are made to live config file of the object - `delete <object-config>.yaml` also works too
+  - `kubectl get -f <filename/url> -o yaml` show objects. `-o yaml` shows the yaml file
+  - limitation: created a deployment from a yaml file. edited the `kubectl edit deploy <name>` (note that, this is not the yaml file from which I created the object. this is called `live configuration`, this is saved in `/tmp/`). then `kubectl replace -f <object-config>.yaml` creates the object from scratch. the edit is gone. works for every kind of object.
+  - `kubectl apply` if multiple writers are needed.
+  - `kubectl create -f <url> --edit` edits the config file from the url, then create the object.
+  - `kubectl get deploy <name> -o yaml --export > <filename>.yaml` exports the live object config file to local config file
+    - then remove the status field (interestingly, the status field is automatically after exporting, although `kubectl get deploy <name> -o yaml` has the status field)
+    - then run `kubectl replace -f <filename>.yaml`
+    - this solves the `replace` problem
+  - Warning: Updating selectors on controllers is strongly discouraged. (QJenny: because it would affect a lot?)
+    - The recommended approach is to define a single, immutable PodTemplate label used only by the controller selector with no other semantic meaning. (significant labels. doesn't have to be changed again)
+
+
+
+
+## Using Declarative object configuration
+  - `object config file` defines the config for k8s object.
+  - `live object config`/`live config` values an object, as observed by k8s cluster. this is typically stored in `etcd` (QJenny isn't it saved in `/tmp/`)
+  - `declaration config writer`/`declarative writer` a person or software component that makes updates to a live object.
+  -
 
 
 
