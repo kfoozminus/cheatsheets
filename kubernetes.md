@@ -616,11 +616,120 @@
 
 
 
-## Using Declarative object configuration
+## [Using Declarative object configuration](https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/) (UJenny)
   - `object config file` defines the config for k8s object.
   - `live object config`/`live config` values an object, as observed by k8s cluster. this is typically stored in `etcd` (QJenny isn't it saved in `/tmp/`)
   - `declaration config writer`/`declarative writer` a person or software component that makes updates to a live object.
-  -
+
+## Nodes
+  - worker machine in k8s, previously knows as `minion`
+  - maybe vm or physical machine
+  - each node contains the services necessary to run pods
+  - the services on a node include docker, kubelet, kube-proxy
+  - a node's status contains - addresses, condition, capacity, info
+  - Node is a top-level resource in the k8s REST API. (QJenny)
+
+### Addresses
+  - usage of these fields depends on your cloud provider or bare metal config
+  - `HostName` the hostname as reported by the node's kernel. can be overridden via the kubelet `--hostname-override` parameter
+  - `ExternalIP` available from outside the cluster
+  - `InternalIP` within the cluster
+
+### Condition
+  - describes the status of all running nodes
+  - `OutOfDisk` `True` if there is insufficient free space on the node for adding new pods, otherwise `False`
+  - `Ready` `True` if the node is healthy and ready to accept pods, `False` if the node is not healthy and is not accepting pods and `Unknown` if the node controller has not heard from the node in the last `node-monitor-grace-period` (default is 40 seconds)
+  - `MemoryPressure` `True` if pressure exists on the node memory - that is, if the node memory is low; otherwise `False`
+  - `PIDPressure` `True` if pressure exists on the processes - that is, if there are too many processes on the node, otherwise `False`
+  - `DiskPressure` `True` if pressure exists on the disk size - that is, if the disk capacity is low; otherwise `False`
+  - `NetworkUnavailable` `True` if the network for the node is not correctly configured, otherwise `False`
+  - 
+  ```
+  "conditions": [
+		{
+			"type": "Ready",
+			"status": "True"
+		}
+	]
+  ```
+  - if the status of the `Ready` condition remains `Unknown` or `False` for longer than `pod-eviction-timeout` (default 5m), an argument is passed to `kube-controller-manager` and all the pods on the node are scheduled for deletion by Node Controller. if apiserver cannot communicate with kubelet on the node, the deletion decision cannot happen until the communication is established again. in the meantime, the pods on the node continues to run, in `Terminating` or `Unknown` state.
+  - prior to version 1.5, node controller force deletes the pods from the apiserver. from 1.5, if k8s cannot deduce if the node has permanently left the cluster, admin needs to delete the node by hand. then all pods will be deleted with the node.
+  - in version 1.12, `TaintNodesByCondition` feature is promoted to beta，so node lifecycle controller automatically creates taints that represent conditions. Similarly the scheduler ignores conditions when considering a Node; instead it looks at the Node’s taints and a Pod’s tolerations. users can choose between the old scheduling model and a new, more flexible scheduling model. A Pod that does not have any tolerations gets scheduled according to the old model. But a Pod that tolerates the taints of a particular Node can be scheduled on that Node. Enabling this feature creates a small delay between the time when a condition is observed and when a taint is created. This delay is usually less than one second, but it can increase the number of Pods that are successfully scheduled but rejected by the kubelet. (QJenny)
+
+### Capacity
+  - describes the resources available on the node: cpu, memory, max no of pods that can be scheduled
+
+### Info
+  - general information about the node, such as kernel version, k8s (kubelet, kube-proxy) version, docker version, os name. these info are gathered by kubelet
+
+
+## Node Management
+  - unlike pods and services, a node is not inherently created by k8s. it is created by cloud providers, e.g, google compute engine or it exists in your pool of physical or vm. so when k8s creates a node, it creates an object that represents the node. then k8s checks whether the node is valid or not.
+  - 
+  ```
+  {
+		"kind": "Node",
+		"apiVersion": "v1",
+		"metadata": {
+			"name": "10.240.79.157",
+			"labels": {
+				"name": "my-first-k8s-node"
+			}
+		}
+	}
+  ```
+    - k8s creates a node object internally (the representation) and validates the node by health checking based on `metadata.name`. if it is valid, it is eligible to run a pod. otherwise, it is ignored for any cluster until it becomes valid. k8s keeps the object for the invalid node and keeps checking. to stop this process, you have to explicitly delete this node.
+    - there are 3 components that interact with the k8s node interface: node controller, kubelet, kubectl
+
+### Node Controller
+  - k8s master component which manages varioud aspects of nodes
+  - first role is assigning a CIDR block to a node when it is registered (if CIDR assignment is turned on)
+  - second is keeping the node controller's internal list of nodes up to date with the cloud provider's list of available machines. when a node is unhealthy, the node controller asks the cloud provider if the vm for that node is still available. if not, the node controller deletes the node from its list of nodes.
+  - third is monitoring the nodes' health. the node controller is responsible for updating the NodeReady condition of NodeStatus to ConditionUnknown when a node becomes unreachable and then later evicting all the pods from the node if the node continues to be unreachable(`--node-monitor-grace-period` is 40s and `pod-eviction-timeout` is 5m by defautl). the node controller checks the state of each node every `--node-monitor-period` seconds (default 5s) (QJenny where are these flags???)
+  - prior to 1.13, NodeStatus is the heartbeat of a node. from 1.13, node lease feature is introduced. when this feature is enabled, each node has an associated `Lease` object in `kube-node-lease` namespace. both NodeStatus and node lease are treated as heartbeats. Node leases are updated frequently and NodeStatus is reported from node to master only when there is some change or some time(default 1 minute) has passed, which is longer than default timeout of 40 seconds for unreachable nodes. Since node lease is much more lightweight than NodeStatus, this feature makes node heartbeat cheaper.
+  - Node controller limits the eviction rate to `--node-eviction-rate` (default 0.1) per second, meaning it won't evict pods from more than 1 node per 10 seconds.
+    - If your cluster spans multiple cloud provider availability zones (otherwise its one zone), node eviction behavior changes when a node in a given availability becomes unhealthy.
+    - Node controller checks the percentage of unhealthy nodes (`NodeReady` is `False` or `ConditionUnknown`). If the fraction is at least `--unhealthy-zone-threshold` (default 0.55) then the eviction rate is reduced - if the cluster is small (less than or equal to `--large-cluster-size-threshold`, default 50 nodes), then evictions are stopped, otherwise the eviction rate is reduced to `--secondary-node-eviction-rate` (default 0.01) per second.
+    - This is done because one availability zone might become partitioned from the master while the others remain connected.
+    - Key reason for spreading the nodes across availability zone is that workload can be shifted to healthy zones when one entire zone goes down.
+    - Therefore if all nodes in a zone are unhealthy then node controller evicts at the normal rate `--node-eviction-rate`
+    - Corner case is, if all zones are completely unhealthy, node controller thinks there's some problem with master connectivity and stops all evictions until some connectivity is restored.
+    - Starting in Kubernetes 1.6, the NodeController is also responsible for evicting pods that are running on nodes with NoExecute taints, when the pods do not tolerate the taints. Additionally, as an alpha feature that is disabled by default, the NodeController is responsible for adding taints corresponding to node problems like node unreachable or not ready. See this documentation for details about NoExecute taints and the alpha feature. Starting in version 1.8, the node controller can be made responsible for creating taints that represent Node conditions. This is an alpha feature of version 1.8. (QJenny)
+
+### Self-Registration of Nodes (QJenny)
+  - When the kubelet flag `--register-node` is true (the default), the kubelet will attempt to register itself with the API server.
+  - `--kubeconfig` path to credentials to authenticate itself to the apiserver
+  - `--cloud-provider` how to talk to a cloud provider to read metadata about itself
+  - `--register-node` automatically register with the API server
+  - `--register-with-taints` register the node with the given list of taints (comma separated <key>=<value>:<effect>) No-op if `register-node` is false
+  - `--node-ip` ip address of the node
+  - `--node-labels` labels to add when registering the node in the cluster
+  - `--node-status-update-frequency` specifies how often kubelet posts node status to master
+#### [Manual Node Administration](https://kubernetes.io/docs/concepts/architecture/nodes/#manual-node-administration) (UJenny)
+
+
+
+## Node capacity
+  - Number of cpus and amount of memory
+  - Normally nodes register themselves and report their capacity when creating node object
+  - K8s scheduler ensures that there are enough resources for all thepods on a node. The sum of the requests of containers on the node must be no greater than the node capacity. (It includes all containers started by the kubelet, not the ones started directly by dockers nor any process running outside of the containers)
+  - If you want to explicitly reserve resources for non-pod processes, you can create a placeholder pod. QJenny
+  ```
+  apiVersion: v1
+	kind: Pod
+	metadata:
+		name: resource-reserver
+	spec:
+		containers:
+		- name: sleep-forever
+			image: k8s.gcr.io/pause:0.8.0
+			resources:
+				requests:
+					cpu: 100m
+					memory: 100Mi
+  ```
+	- set the cpu and memory values to the amount of resources you want to reserve. Place the file in the manifest directory (`--config=DIR` flag of kubelet). do this on every kubelet you want to reserve resources. QJenny
+
 
 
 
@@ -641,7 +750,8 @@
 
 
 # To Do:
-  - make list of all the ports
+  - make list of all the ports/ip
+  - you need get, create, patch permissin for `kubectl apply` (dipta vai)
 
 
 
