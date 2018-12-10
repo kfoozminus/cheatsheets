@@ -405,7 +405,7 @@
 ## Labels and Selectors
   - to specify identifying attributes of objects - meaningful and relevant (but do not directly imply semantics to the core system). used to organize and seelect subsets of objects. can be attached at creation/added/modified.
   - key can be anything, but have to be unique (within a object). e.g, `release`, `environment`, `tier`, `partition`, `track`
-  - Labels are key/value pairs. Valid label keys have two segments: an optional prefix and name, separated by a slash (/). The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels separated by dots (.), not longer than 253 characters in total, followed by a slash (/). If the prefix is omitted, the label Key is presumed to be private to the user. Automated system components (e.g. kube-scheduler, kube-controller-manager, kube-apiserver, kubectl, or other third-party automation) which add labels to end-user objects must specify a prefix. The kubernetes.io/ prefix is reserved for Kubernetes core components.
+  - Labels are key/value pairs. Valid label keys have two segments: an optional prefix and name, separated by a slash (/). The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels separated by dots (.), not longer than 253 characters in total, followed by a slash (/). If the prefix is omitted, the label Key is presumed to be private to the user. Automated system components (e.g. kube-scheduler, kube-controller-manager, kube-apiserver, kubectl, or other third-party automation) which add labels to end-user objects must specify a prefix. The kubernetes.io/ prefix is reserved for Kubernetes core components. (QJenny)
   - many objects can have same labels
   - via a label selector, the client/user can identify a set of objects. the label selector is the core grouping primitive in k8s
   - current, the API supports two types of selectors: equality-based and set-based. A label selector can be made of multiple requirements, which are comma-separated - acts as a logical AND(&&).
@@ -683,7 +683,7 @@
 
 ### Node Controller
   - k8s master component which manages varioud aspects of nodes
-  - first role is assigning a CIDR block to a node when it is registered (if CIDR assignment is turned on)
+  - first role is assigning a CIDR block to a node when it is registered (if CIDR assignment is turned on) (QJenny)
   - second is keeping the node controller's internal list of nodes up to date with the cloud provider's list of available machines. when a node is unhealthy, the node controller asks the cloud provider if the vm for that node is still available. if not, the node controller deletes the node from its list of nodes.
   - third is monitoring the nodes' health. the node controller is responsible for updating the NodeReady condition of NodeStatus to ConditionUnknown when a node becomes unreachable and then later evicting all the pods from the node if the node continues to be unreachable(`--node-monitor-grace-period` is 40s and `pod-eviction-timeout` is 5m by defautl). the node controller checks the state of each node every `--node-monitor-period` seconds (default 5s) (QJenny where are these flags???)
   - prior to 1.13, NodeStatus is the heartbeat of a node. from 1.13, node lease feature is introduced. when this feature is enabled, each node has an associated `Lease` object in `kube-node-lease` namespace. both NodeStatus and node lease are treated as heartbeats. Node leases are updated frequently and NodeStatus is reported from node to master only when there is some change or some time(default 1 minute) has passed, which is longer than default timeout of 40 seconds for unreachable nodes. Since node lease is much more lightweight than NodeStatus, this feature makes node heartbeat cheaper.
@@ -728,13 +728,141 @@
 					cpu: 100m
 					memory: 100Mi
   ```
-	- set the cpu and memory values to the amount of resources you want to reserve. Place the file in the manifest directory (`--config=DIR` flag of kubelet). do this on every kubelet you want to reserve resources. QJenny
+    - set the cpu and memory values to the amount of resources you want to reserve. Place the file in the manifest directory (`--config=DIR` flag of kubelet). do this on every kubelet you want to reserve resources. QJenny
 
 
+## Master-Node Communication (QJenny)
+  - communication paths between the master (really the apiserver) and the k8s cluster.
+  - to allow users to customize their installatin to run the cluster on an untrusted network or on fully public IPs on a cloud provider
+
+### Cluster to Master
+  - all communicatin paths from the cluster to master terminate at the apiserver (`kube-apiserver`, which exposes k8s api. it is designed to expose remote services)
+  - in a typical deployment, the apiserver is configured to listen for remote connections on a secure https port (443) with one or more forms of client authentication enable, which is necessary if annonymous requests of service account tokens are allowed (QJenny)
+  - nodes should be provisioned with the public root certificate for the cluster such that they can connect securely to the apiserver along with valid client credentials. for example, on a default GKE(Google Kubernetes Engine) deployment, the client credentials provided to the kubelet are in the form of a client certificate.
+  - pods that wish to connect to the apiserver can do so securely by taking a 'service account' so that k8s will automatically inject the public root certificate and a valid bearer token into the pod when it is instactiated.
+  - the `kubernetes` service (in all namespaces) is configured with a virtual IP address that is redirected (via `kube-proxy`) to the https endpoint on the apiserver
+  - the master components also communicate with the cluster apiserver over the secure port
+  - so, the default operating mode for connections from the cluster (nodes and pods running on the nodes) to the master is secured by default and can run over untrusted and/or public network
 
 
+### Master to Cluster
+  - two primary communication paths from the master(apiserver) to the cluster
+    - from the apiserver to the kubelet process
+    - from the apiserver to any node, pod or service through the apiserver's proxy functionality
+
+#### apiserver to kubelet
+  - used for
+    - fetching logs for pods
+    - attaching (through kubectl) tp running pods
+    - providing the kubelet's port-forwarding functionality
+  - these connecions terminate at the kubelet's https endpoint.
+  - by default, apiserver doesn't verify the kubelet's serving certificate, which makes the connection subject to man-in-the-middle attacks, and unsafe to run over untrusted and/or public networks
+  - to verify this connection, use the `--kubelet-certificate-authority` flag to provide the apiserver with a root certificate bundle to use to verify the kubelet's serving certificate
+  - if that is not possible, use `SSH tunneling` betweent the apiserver and kubelet if required to avoid connecting over an untrusted or public network
+  - finally, kubelet authentication and/or authorization shouldb be enabled to secure the kubelet API
 
 
+#### apiserver to nodes, pods ans services
+  - these are default to plain http connections and are therefore neither authenticated nor encrypted.
+  - they can be run over a secure https connection by prefixing `https:` to the node, pod or service name in the API URL, but they will not validate the certificate provided by the https endpoint nor provide client credentials - so while the connection will be encrypted, it will not provide any guarantees of integrity.
+  - these connections are not currently safe to run over untrusted and/or public networks.
+
+
+## Cloud Controller Manager (CCM)
+  - this concept was originally created to allow cloud specific vendor code and k8s core to evolve independent of one another. (QJenny - vendor code)
+  - it runs alongside other master components such as the k8s controller manager, the api server, and scheduler. it can also be started as k8s addon, in which case it runs on top of k8s
+  - CCM's design is based on a plugin mechanism that allows new cloud providers to integrate with k8s by using plugins
+  - there are plans for migrating cloud providers from the old model to the new ccm model
+  - [without ccm](https://d33wubrfki0l68.cloudfront.net/e298a92e2454520dddefc3b4df28ad68f9b91c6f/70d52/images/docs/pre-ccm-arch.png)
+  - here k8s and cloud provider are integrated with 3 different components - kubelet, k8s controller manager, k8s api server
+  - [with ccm](https://d33wubrfki0l68.cloudfront.net/518e18713c865fe67a5f23fc64260806d72b38f5/61d75/images/docs/post-ccm-arch.png)
+  - here, single point of integration with cloud
+
+
+### Components of CCM
+
+  - CCM breaks away cloud dependent controller loops from kcm - Node controller, volume controller, router controller, service controller
+  - from 1.9, due to the complexity involved and due to the existing efforts to abstract away vendor specific volume logic, volume controller is not moved to ccm. instead ccm runs another controller called PersistentVolumeLabels controller. this controller is responsible for setting the zone and region labels on PersistentVolumes created in GCP and AWS clouds (QJenny is volumed controller still in or not? if in, who controls it?)
+  - the original plan to support volumes using CCM was to use Flex volumes to support pluggable volumes. However, a competing effort known as CSI is being planned to replace Flex. Considering these dynamics, we decided to have an intermediate stop gap measure until CSI becomes ready (QJenny)
+
+
+### Functions of CCM
+#### 1. KCM
+  - majority of ccm's functions are derived from the kcm
+  - `node controller` is responsible for initializing a node by obtaining information about the nodes running in the cluster from the cloud provider. does the following functions
+    - intialize a node with cloud specific zone/region labels (QJenny I don't get the grammar. Labels?)
+    - initialize a node with cloud specific instance details, e. g, type and size (QJenny)
+    - obtain the node's network addresses and hostname
+    - if a node becomes unresponsive, check the cloud to see if the node has been deleted form the cloud. if deleted, delete the k8s node object
+    - QJenny does kcm still run node controller?
+  - `route controller` is responsible for configuring routes in the cloud appropriately so that containers on different nodes can communicate with each other. route controller is only applicable for Google Compute Engine clusters (QJenny nodes can communicate with each other??? why and how do they do that?)
+  - `service controller` is responsible for listening to service create, update and delete events. Based on the current state of services, it configures cloud load balancers (such as ELB(Elastic Load Balancing) or Google LB) to reflect the state of the services in k8s. (QJenny)
+  - `PersistentVolumeLabels controller` applies labels on AWS EBS(Amazon Web Services, Elastic Block Store)/GCE PD(Google Compute Engine Persistent Disk) volumes when they are created. removes the need for users to manually set the labels on these volumes.
+    - these labels are essential for the scheduling of pods as these volumes are constrained to work only within the region/zone that they are in. (pods need to be attached to volumes only in same region/zone - because otherwise they would be connected to remote network connection.) (QJenny - shudipta said if they are in different network - they should use NFS (network file system) volume type)
+    - this controller was created for ccm. it was done to move the PV labelling logic in the k8s api server to the CCM (before it was an admission controller). it doesn't run on the KCM.
+    - QJenny - does KCM still run these controller also? does kcm run 'volume controller'?
+
+
+#### 2. Kubelet
+  - node controller contains the cloud-dependent functionality of the kubelet. before CCM, the kubelet was responsible for initializing a node with cloud-specific details such as IP addresses, region/zone labels and instance type information. (QJenny - instance type info?)
+  - now, this initialization operation is moved to CCM
+  - kubelet initializes a node without cloud-specific information.
+  - and adds a taint to the newly created node that makes the node unschedulable until the CCM initializes the node with cloud-specific information. kubelet then removes the taint. (QJenny - again. what's taint?)
+
+
+#### 3. K8s API server
+  - the PersistentVolumeLabels controller moves the cloud-dependent functionality of the K8s API server to CCM
+
+
+### Plugin mechanism
+  - CCM uses Go interfaces to allow implementations from any cloud to be plugged in.
+  - it uses the CloudProvider Interface defined [here](https://github.com/kubernetes/cloud-provider/blob/9b77dc1c384685cb732b3025ed5689dd597a5971/cloud.go#L42-L62) (UJenny)
+  - the implementations of four shared controllers above and shared cloudprovider interface (and some other things) will stay in k8s core.
+  - implementation specific to cloud providers will be built outside of the core and implement interfaces defined in the core
+
+
+### Authorization
+  - node controller only works with node objects. requires full access to `Get`, `List`, `Create`, `Update`, `Patch`, `Watch`, `Delete` (v1/Node)
+  - route controller listens to Node object creation and configures routes appropriately. requires `Get` access to Node objects (v1/Node)
+  - service controller listens to service object create, update and delete events and then configures endpoints for those services appropriately. (v1/Service)
+    - To access services, it requires `List` and `Watch` access.
+    - To update services, it requires `Patch` and `Update` access.
+    - To set up endpoints for the services, it requires access to `Create`, `List`, `Get`, `Watch`, `Update`
+  - PersistentVolumeLabels controller listens on PersistentVolume (PV) create events and then updates them. requires access to get and update PVs through v1/PersistentVolume: `Get`, `List`, `Watch`, `Update` access
+  - others: the implementation of the core CCM requires access to create events and to ensure secure operation, it requires access to create ServiceAccounts through v1/Event: `Create`, `Patch`, `Update` and v1/ServiceAccount: `Create`
+  - [kind: ClusterRole](https://kubernetes.io/docs/concepts/architecture/cloud-controller/#others) UJenny
+
+
+### [Vendor Implementations](https://kubernetes.io/docs/concepts/architecture/cloud-controller/#vendor-implementations)
+  - cloud providers implement CCM to integrate with k8s - so that cluster can be hosted on these cloud providers? (QJenny)
+
+
+## Containers ([UJenny](https://kubernetes.io/docs/concepts/containers/images/))
+### Updating Images
+  - default pull policy is `IfNotPresent` which causes the kubelet (QJenny - kubelet does this?) to skip pulling.
+  - to always force a pull, one of these can be done
+    - set the imagePullPolicy to `Always`
+    - omit the imagePullPolicy and use `:latest` as tag (not best practice)
+    - omit imagePullPolicy and the tag for the image (QJenny - omit both???)
+    - enable the `AlwaysPullImages` admission controller ([UJenny](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#alwayspullimages))
+
+
+### Building Multi-architecture Images with Manifests
+### Using a Private Registry
+### Container Environment Variables
+### Runtime Class
+### Container Lifecycle Hooks
+
+
+## Pods
+  - smallest deployable object
+  - a pod represents a running process on your cluster
+  - a pod encapsulates
+    - one or multiple containers
+    - storage resources
+    - a unique network IP
+    - options that govern how the container(s) should run.
+  - a single instance of an app - either a single container or a small number of containers that are tightly coupled together and that share resources
 
 
 
