@@ -150,8 +150,8 @@
     - this doesn't add this label to the service - so we are sure that : although service/pod had same label `run=booklistkube2` they are different
     - QJenny - `app` is an attribute? what are the other attributes?
   - `kubectl describe pods <pod-name>`
-    - if we use `-l` flag, use <pod-label>
-    - otherwise, use <pod-name>
+    - if we use `-l` flag, `use <pod-label>`
+    - otherwise, use `<pod-name>`
     - same for `kubectl get pods`
   - `kubectl describe pods -l app=<app-label-name`
   - `kubectl delete service -l run=<label-name>` or `app=<label-name` deletes a service
@@ -460,32 +460,32 @@
 
 
 ### API
-    - LIST and WATCH both are allowed to use using labels
-    - in URL:
-      - equality-based: `?labelSelector=environment%3Dproduction,tier%3Dfrontend`
-      - set-baed: `?labelSelector=environment+in+%28production%2Cqa%29%2Ctier+in+%28frontend%29`
-    - both selector style can be used to list or watch via REST client. e.g, targeting `apiserver` with `kubectl`
-      - `kubectl get pods -l environment=production, tier=frontend`
-      - `kubectl get pods -l 'environment in (production), tier in (frontend)'`
-    - set-based requirements are more expressive - they can implement OR operator
-      - `kubectl get pods -l 'environment in (production, qa)'` selects `qa` or `production`
-      - `kubectl get pods -l 'environment, environment notin(frontend)'` selects resources which has `environment` and it cannot be `frontend` (if i wrote `environment notin(frontend)` only, it would select the resources which doesn't have `environment` key also)
-    - `services` and `replicationcontrollers` also use label selectors to select other resources as `pods`
-      - only equality-based requirements are supported (QJenny: is this restriction for deploy/pods too?)
-    - newer resources, such as `job`, `deployment`, `replicaset`, `daemon set` support set-baed requirements
-    ```
-		selector:
-			matchLabels:
-				component: redis
-			matchExpressions:
-				- {key: tier, operator: In, values: [cache]}
-				- {key: environment, operator: NotIn, values: [dev]}
-    ```
-    - `matchExpressions` is a list of label selector requirements. The requirements are ANDed. +optional
-      - `key` is the label key that the selector applies to. type: string
-      - `operator` represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-      - `values` is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. +optional (QJenny: merge patch?)
-    - All of the requirements, from both matchLabels and matchExpressions are ANDed together – they must all be satisfied in order to match.
+  - LIST and WATCH both are allowed to use using labels
+  - in URL:
+    - equality-based: `?labelSelector=environment%3Dproduction,tier%3Dfrontend`
+    - set-baed: `?labelSelector=environment+in+%28production%2Cqa%29%2Ctier+in+%28frontend%29`
+  - both selector style can be used to list or watch via REST client. e.g, targeting `apiserver` with `kubectl`
+    - `kubectl get pods -l environment=production, tier=frontend`
+    - `kubectl get pods -l 'environment in (production), tier in (frontend)'`
+  - set-based requirements are more expressive - they can implement OR operator
+    - `kubectl get pods -l 'environment in (production, qa)'` selects `qa` or `production`
+    - `kubectl get pods -l 'environment, environment notin(frontend)'` selects resources which has `environment` and it cannot be `frontend` (if i wrote `environment notin(frontend)` only, it would select the resources which doesn't have `environment` key also)
+  - `services` and `replicationcontrollers` also use label selectors to select other resources as `pods`
+    - only equality-based requirements are supported (QJenny: is this restriction for deploy/pods too?)
+  - newer resources, such as `job`, `deployment`, `replicaset`, `daemon set` support set-baed requirements
+  ```
+  selector:
+    matchLabels:
+      component: redis
+    matchExpressions:
+      - {key: tier, operator: In, values: [cache]}
+      - {key: environment, operator: NotIn, values: [dev]}
+  ```
+  - `matchExpressions` is a list of label selector requirements. The requirements are ANDed. +optional
+    - `key` is the label key that the selector applies to. type: string
+    - `operator` represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+    - `values` is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. +optional (QJenny: merge patch?)
+  - All of the requirements, from both matchLabels and matchExpressions are ANDed together – they must all be satisfied in order to match.
 
 
 ## Annotations
@@ -773,9 +773,9 @@
   - it runs alongside other master components such as the k8s controller manager, the api server, and scheduler. it can also be started as k8s addon, in which case it runs on top of k8s
   - CCM's design is based on a plugin mechanism that allows new cloud providers to integrate with k8s by using plugins
   - there are plans for migrating cloud providers from the old model to the new ccm model
-  - [without ccm](https://d33wubrfki0l68.cloudfront.net/e298a92e2454520dddefc3b4df28ad68f9b91c6f/70d52/images/docs/pre-ccm-arch.png)
+  - ![without ccm](https://d33wubrfki0l68.cloudfront.net/e298a92e2454520dddefc3b4df28ad68f9b91c6f/70d52/images/docs/pre-ccm-arch.png)
   - here k8s and cloud provider are integrated with 3 different components - kubelet, k8s controller manager, k8s api server
-  - [with ccm](https://d33wubrfki0l68.cloudfront.net/518e18713c865fe67a5f23fc64260806d72b38f5/61d75/images/docs/post-ccm-arch.png)
+  - ![with ccm](https://d33wubrfki0l68.cloudfront.net/518e18713c865fe67a5f23fc64260806d72b38f5/61d75/images/docs/post-ccm-arch.png)
   - here, single point of integration with cloud
 
 
@@ -817,7 +817,9 @@
 ### Plugin mechanism
   - CCM uses Go interfaces to allow implementations from any cloud to be plugged in.
   - it uses the CloudProvider Interface defined [here](https://github.com/kubernetes/cloud-provider/blob/9b77dc1c384685cb732b3025ed5689dd597a5971/cloud.go#L42-L62) (UJenny)
-  - the implementations of four shared controllers above and shared cloudprovider interface (and some other things) will stay in k8s core.
+  - the implementations of four shared controllers above and shared cloudprovider interface (and some other things) will stayRather than specifying the current desired state of all replicas, pod templates are like cookie cutters. Once a cookie has been cut, the cookie has no relationship to the cutter. There is no “quantum entanglement”. Subsequent changes to the template or even switching to a new template has no direct effect on the pods already created. Similarly, pods created by a replication controller may subsequently be updated directly. This is in deliberate contrast to pods, which do specify the current desired state of all containers belonging to the pod. This approach radically simplifies system semantics and increases the flexibility of the primitive.
+  -
+  - in k8s core.
   - implementation specific to cloud providers will be built outside of the core and implement interfaces defined in the core
 
 
@@ -862,8 +864,67 @@
     - storage resources
     - a unique network IP
     - options that govern how the container(s) should run.
-  - a single instance of an app - either a single container or a small number of containers that are tightly coupled together and that share resources
+  - two ways:
+    - pods that run a single container: most common use case, a pod just wraps around a container. kubernetes manages the pods rather than the containers
+    - pods that run multiple containers that need to work together: tightly coupled containers and need to share resources. these co-located containers might form a single cohesive unit of service - one container serving files from a shared volume to the public, another container refreshes or updates those files.
+  - replication: horizontal scaling (multiple instances)
+  - the containers in a pod are automatically co-located and co-scheduled on the same physical or virtual machine in the cluster.
+  - they can share resources and dependencies, communicate with one another, and coordinate when and how they are terminated.
+  - it's a advanced use case. only use when they are tightly coupled. for example, one container acts as a web server for files in a shared volume and another one updates those files from a remote source. ![multiple containers](https://d33wubrfki0l68.cloudfront.net/aecab1f649bc640ebef1f05581bfcc91a48038c4/728d6/images/docs/pod.svg)
+  - pods provide two kinds of shared resources for their containers: networking and storage.
+    - networking: each container in a pod shares the network namespace, including the IP address and network ports. they communicate with one another using `localhost`. (QJenny how???)
+    - when containers in a pod communicate with entities outside the Pod, they must coordinate how they use the shared network resources (such as ports)
+    - storage: a pod can specify a set of shared storage volumes. All containers in the pod can access the shared volumes. Volumes also allow persistent data in a Pod to survive in case one of the containers within needs to be restarted. (QJenny)
+  - you'll rarely create individual pods directly (QJenny - but this can be done? what's an practice example?)
+  - pods can be created directly by me or indirectly by Controller (QJenny)
+  - pod remains in the scheduled Node until the process is terminated, pod object is deleted, pod is evicted for lack of resources or Node fails
+  - the pod itself doesn't run, but it is an environment the containers run in and persists until it is deleted
+  - pods don't self-heal. if a pod is scheduled to a node that fails or if scheduling operation itself fails, the pod is deleted. and pods don't survive evictiion due to lack of resources or Node maintenance
+  - k8s uses a higher-level abstraction, called a controller, that handles the work of managing the relatively disposable Pod instances. (QJenny)
+  - although it is possible to use Pod directly, it's far more common to manage pods using a Controller
+  - A controller can create and manage multiple pods, handling replication and rollout and providing self-healing capabilities at cluster scope. for example, if a Node fails, the controller might automatically replace the Pod by scheduling an identical replacement on a different Node (QJenny as the pod is being replaced, does that mean it will work from scratch? how about the shared volumes and data? will they be lost?)
+  - some examples of controller - deployment, StatefulSet, DaemonSet
 
+
+### Pod Templates
+  - pod templates are pod specifications which are included in other objects such as Replication Controllers, Jobs, DaemonSets.
+  - controllers use pod templates to make actual pods.
+  - 
+  ```
+  apiVersion: v1
+	kind: Pod
+	metadata:
+		name: myapp-pod
+		labels:
+			app: myapp
+	spec:
+		containers:
+		- name: myapp-container
+			image: busybox
+			command: ['sh', '-c', 'echo Hello Kubernetes! && sleep 3600']
+  ```
+  - rather than specifying the current desired state of all replicas, pod templates are like cookie cutters. once a cookie has been cut, the cookie has no relationship to the cutter.
+  - subsequent changes to the template or even switching to a new template has no direct effect on the pods already created.
+  - changes to the template doesn't affect the pods already created
+  - Similarly, pods created by a replication controller may subsequently be updated directly. this is in deliberate contrast to pods, which do specify the current desired state of all containers belonging to the pod. (after creating pods with controller, the pods can be updated separately with `kubectl edit pod <name>`. it will affect only the specific pod)
+  - a pod models an application-specific "logical host". [before: same physical/virtual machine] = [now: same logical host]
+  - the shared context of a pod is a set of Linux namespaces, cgroups, and other aspects of isolation (same things that isolate Docker container) (QJenny: "shared context of a pod" - does that mean containers in a pod will share these?)
+    - `cgroups` (control groups) is a Linux kernel feature that limits, accounts for and isolates the resource usage(CPU, memory, disk I/O, network etc) of a collection of processes.
+  - within a pod's context, the individual applications may have further sub-isolations applied. (QJenny: how?)
+  - as mentioned before, containers in same pod share an IP address and port space and can find each other via `localhost`. they can also communicate using standard inter-process communications like `SystemV semaphores` or `POSIX` shared memory. (QJenny: what?)
+  - containers in different pods have distinct IP addresses and cannot communicate by IPC (interprocess communication) [without special configuration](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) (UJenny)
+  - containers in different pods communicate usually with each other via pod ip addresses.
+  - applications within a pod also have access to shared volumes, which are defined as part of a pod and are made available to be mounted into each applicaion's filesystem. (QJenny mounted how?)
+  - pods are of "short life". after pods are created, they are assigned a unique ID (UID), scheduled to nodes where they remain until termination or deletion.
+  - a pod is defined by UID
+  - If a node dies, pods are scheduled for deletion after a timeout period. they are not rescheduled, instead it is replaced by an identical pod, if desired with same name (QJenny) but with a new UID
+  - when something is said to have same lifetime as a pod, such as a volume, it exists as long as that specific pod (with that UID) exists. if the pod is deleted, volume is also destroyed. even if an identical pod is replaced, volume will be created anew.
+  - pods are unit of deployment, horizontal scaling, replication (QJenny - difference between horizontal scaling and replication?)
+  - colocation (coscheduling), shared fate(e.g, termination), coordinated replication (QJenny), resource sharing, dependency management are handled automatically in a pod
+  - applications in a pod must decide which one will use which port (one container is exposed in one port)
+  - each pod has an IP address in a flat shared networking space (QJenny) that can communicate with other physical machines and pods across the network
+  - the hostname is set to the pod's name for the application containers within the pod (QJenny)
+  - volumes enable data to survive container restarts and to be shared among the applicatiions within the pods
 
 
 
