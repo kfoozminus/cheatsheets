@@ -243,14 +243,12 @@ a = append(a, b...) // equivalent to "append(a, b[0], b[1], b[2])"
 
 //unpack operator will use reference of the slice - that means, underlying array of the slice.
 
-
 //cap value is important when appending. len value is important when copying.
 
 re-slicing a slice doesn't make a copy of the underlying array. The full array will be kept in memory until it is NO LONGER REFERENCED.
 
 //delete 2nd element
 slice = append(slice[:2], slice[3:]...)
-
 
 slice1 == slice2    //can't write this, only can compare to nil
 

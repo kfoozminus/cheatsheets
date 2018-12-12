@@ -352,7 +352,7 @@
               - IfNotPresent means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
             - `ports` List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Cannot be updated. +optional
               - `containerPort` Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536. (QJenny)
-          - `restartPolicy` Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. +optional
+          - `restartPolicy` Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. +optional (QJenny when does container restarts if it's `Always`?)
       - `selector` Label selector for pods. Existing ReplicaSets whose pods are selected by this will be the ones affected by this deployment. It must match the pod template's labels. (Selector selects the pods that will be controlled. if the matchLabels is a subset of a pod, then that pod will be selected and will be controlled. If we change no of replicas then these pods will be affected? QJenny)
         - `matchLabels` matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed. +optional. type: map[string]string
           - `app` is a key
@@ -884,9 +884,6 @@
   - although it is possible to use Pod directly, it's far more common to manage pods using a Controller
   - A controller can create and manage multiple pods, handling replication and rollout and providing self-healing capabilities at cluster scope. for example, if a Node fails, the controller might automatically replace the Pod by scheduling an identical replacement on a different Node (QJenny as the pod is being replaced, does that mean it will work from scratch? how about the shared volumes and data? will they be lost?)
   - some examples of controller - deployment, StatefulSet, DaemonSet
-
-
-### Pod Templates
   - pod templates are pod specifications which are included in other objects such as Replication Controllers, Jobs, DaemonSets.
   - controllers use pod templates to make actual pods.
   - 
@@ -925,6 +922,95 @@
   - each pod has an IP address in a flat shared networking space (QJenny) that can communicate with other physical machines and pods across the network
   - the hostname is set to the pod's name for the application containers within the pod (QJenny)
   - volumes enable data to survive container restarts and to be shared among the applicatiions within the pods
+  - [uses of pods](https://kubernetes.io/docs/concepts/workloads/pods/pod/#uses-of-pods) UJenny
+  - individual pods are not intended to run multiple instances of the same application
+  - why not just run multiple programs in a single container?
+    - transparency: helps the infrastructure to manage them, for example, process management and resoruce monitoring.
+    - decoupling software dependencies: they maybe be versioned, rebuilt, redeployed independently. k8s may even support live updates of individual containers someday. QJenny
+    - ease of use. users don't need to run their process managers (because infrastructure manages them?)
+    - efficiency: infrastructure takes on more responsibility, containers can be light weight
+  - Why not support affinity-based co-scheduling of containers? That approach would provide co-location, but would not provide most of the benefits of pods, such as resource sharing, IPC, guaranteed fate sharing, and simplified management. QJenny
+  - controllers (such as deployement) provides self-healing, replication, rollout management wiht a cluster scope, that's why pods should use controllers, even for singletons
+  - pod is exposed as a primitive in order to facilitate : [UJenny](https://kubernetes.io/docs/concepts/workloads/pods/pod/#durability-of-pods-or-lack-thereof)
+  - as pods represent running processes on nodes in the cluster, it is important to allow those processes to gracefully terminate instead of being killed with a KILL signal
+  - when a user requests for deletion of a pod
+    - the system records the intended grace period before the pod is forcefully killed
+    - a TERM signal is sent to main processes of containers of the pod
+    - once the grace period is over, KILL signal is sent to those processes (of containers)
+    - then pod is deleted from API server
+    - if kubelet or container manager is restarted while waiting for processes to terminate, termination will be tried again with full grace period.
+  - an example flow -
+    - user sends commands to delete a pod with grace period of 30s
+    - the pod in the API server is updated with the last-alive-time and grace period
+    - `kubectl get pods` will show `Terminating` for the pod. when the kubelet sees the `Terminating` mark, it begins the process (the following subpoints happen simulaneously with this step)
+      - if the pod has defined a `preStop hook`, it is invoked inside of the pod.
+        - [`preStop`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2192) is called immediately before a container is terminated. it must complete before the call to delete the container can be sent. of type `Handler`
+      - if the `preStop` hook is still running after grace period expires, 2nd step again - API server is updated with 2 second of grace period again.
+      - the processes are sent TERM signal
+      - pod is removed from endpoints list for service, are no longer part of the set of running pods for replication controllers
+      - pods that shutdown slowly cannot continue to serve traffic as load balancers (like the service proxy) remove them from their rotations (QJenny)
+    - when the grace perios expires, running processes are killed with SIGKILL
+    - kubelet will finish deleting the pod on the API server by setting grace period to 0s (immediate deletion).
+  - default grace period is 30s.
+  - `kubectl delete` has `--grace-period=<second>`
+  - to force delete set `--grace-period` to 0 along with `--force`
+  - force deletion of a pod: doesn't wait for kubelet confirmation from the node. the pod is deleted from the apiserver immediately and a new pod is created with the same name. on the node, pods that are set to terminate will be given a small grace period before being killed.
+  - using `privileged` flag on the `SecurityContext` of the container (not pod) spec enables priviledge mode. it allows the containers to use linux capabilities like manipulating the network stack and accessing devices. all processes in a container get same privileges usually. with privileged mode, it is easier to write network and volume plugins as separate pods that don't need to be compiled in kubelet
+  - privileged mode is enabled from k8s v1.1. If the master is v1.1 or higher, but node is below, privileged pods will be created (accepted in apiserver) but will be in pending state. if master is below v1.1, pods won't be created.
+
+
+## Pod Lifecycle
+### Pod struct
+  - pod's status field is a [`PodStatus`](https://github.com/kubernetes/kubernetes/blob/895f483fdfba055573681ef067e16d60df7985f8/staging/src/k8s.io/apiserver/pkg/apis/example/v1/types.go#L56) object, which has a `phase` field. (current condition of the pod)
+    - `Pending` The Pod has been accepted by the Kubernetes system, but one or more of the Container images has not been created. This includes time before being scheduled as well as time spent downloading images over the network, which could take a while.
+    - `Running` The Pod has been bound to a node, and all of the Containers have been created. At least one Container is still running, or is in the process of starting or restarting.
+    - `Succeeded` All Containers in the Pod have terminated in success, and will not be restarted.
+    - `Failed` All Containers in the Pod have terminated, and at least one Container has terminated in failure. That is, the Container either exited with non-zero status or was terminated by the system.
+    - `Unknown` For some reason the state of the Pod could not be obtained, typically due to an error in communicating with the host of the Pod.
+  - PodStatus has a [`PodCondition`](https://github.com/kubernetes/kubernetes/blob/895f483fdfba055573681ef067e16d60df7985f8/staging/src/k8s.io/apiserver/pkg/apis/example/v1/types.go#L87) array (current service state of the pod)
+    - [Details](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-conditions) UJenny
+    ```
+      conditions:
+		- lastProbeTime: null
+			lastTransitionTime: 2018-12-11T08:54:48Z
+			status: "True"
+			type: Initialized
+		- lastProbeTime: null
+			lastTransitionTime: 2018-12-12T04:01:42Z
+			status: "True"
+			type: Ready
+		- lastProbeTime: null
+			lastTransitionTime: 2018-12-11T08:54:48Z
+			status: "True"
+			type: PodScheduled
+    ```
+
+
+## Container Probes
+  - A probe is a diagnostic performed periodically by kubelet on a container. container struct has two member of this type (liveness and readiness)
+  - to perform a diagnostic, kubelet calls a Handler
+  - [Probe struct](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1932) - Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.
+    - `Handler` The action taken to determine the health of a container. 3 types of handlers-
+      - [`ExecAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1920:6) Executes a specified command inside the Container. The diagnostic is considered successful if the command exits with a status code of 0. takes a command as an element of this struct
+      - [`TCPSocketAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1909:6)  Performs a TCP check against the Container’s IP address on a specified port. The diagnostic is considered successful if the port is open. takes the port as element. takes host name to connect to, default to pod ip. (QJenny - host name???)
+      - [`HTTPGetAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1877:6) Performs an HTTP Get request against the Container’s IP address on a specified port and path. The diagnostic is considered successful if the response has a status code greater than or equal to 200 and less than 400. takes path, port, host (default to pod ip) as element of this struct
+    - `InitialDelaySeconds` of type `int32` - Number of seconds after the container has started before liveness probes are initiated.
+  - each probe has one of three results:
+    - success: the container passed the diagnostic
+    - failure: failed the diagnostic
+    - unknown: the diagnostic itself failed, so no action should be taken
+  - the kubelet can optionally (QJenny) perform and react to two kinds of probes on running containers:
+    - [`livenessProbe`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2095) Indicates whether the Container is running. If the liveness probe fails, the kubelet kills the Container, and the Container is subjected to its restart policy. If a Container does not provide a liveness probe, the default state is Success. (QJenny what does it mean by "doesn't provide liveness probe"?)
+    - [`readinessProbe`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2106) Indicates whether the Container is ready to service requests. If the readiness probe fails, the endpoints controller (QJenny there's a endpoints controller?) removes the Pod’s IP address from the endpoints of all Services that match the Pod. The default state of readiness before the initial delay is Failure. If a Container does not provide a readiness probe, the default state is Success.
+  - when should we use which probe?
+    - if process in container is able to crash on its own whenever it becomes unhealthy - probes aren't needed - kubelet will take care of it with pod's `restartPolicy`
+    - if container needs to be killed and restarted if a probe failt - liveness probe + restartPolicy of Always or OnFailure
+    - if container needs to send traffic only when a probe succeeds - readiness probe. in previous case, readiness or liveness if fine. but readiness in the spec means that the pod will start without receiving any traffic and starts receiving traffic only after readiness probe starts succeeding
+    - if container works on loading large data, configuration files or migrations during startup - readiness (QJenny why?)
+    - If you want your Container to be able to take itself down for maintenance, you can specify a readiness probe that checks an endpoint specific to readiness that is different from the liveness probe. QJenny
+    - if you want to avoid requests when pod is deleted, no need of readiness probe. on deletion, pod automatically put itself into an unready state, remains in that state while it waits for the containers to stop (QJenny then what happens?)
+  - PodStatus has a member - a list of [`ContainerStatus`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2270) UJenny
+  - PodSpec has a new member from v1.11 - [`ReadinessGate`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2880) - If specified, all readiness gates will be evaluated for pod readiness. A pod is ready when all its containers are ready AND all conditions specified in the readiness gates have status equal to "True". +optional. contains a list of PodConditionType
 
 
 
@@ -932,7 +1018,8 @@
 
 
 
-
+# Tasks
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
 
 
 
