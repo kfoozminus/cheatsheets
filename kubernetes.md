@@ -1013,6 +1013,84 @@
   - PodSpec has a new member from v1.11 - [`ReadinessGate`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2880) - If specified, all readiness gates will be evaluated for pod readiness. A pod is ready when all its containers are ready AND all conditions specified in the readiness gates have status equal to "True". +optional. contains a list of PodConditionType
 
 
+Kind: Pod
+...
+spec:
+  readinessGates:
+    - conditionType: "www.example.com/feature-1"
+status:
+  conditions:
+    - type: Ready  # this is a builtin PodCondition
+      status: "True"
+      lastProbeTime: null
+      lastTransitionTime: 2018-01-01T00:00:00Z
+    - type: "www.example.com/feature-1"   # an extra PodCondition
+      status: "False"
+      lastProbeTime: null
+      lastTransitionTime: 2018-01-01T00:00:00Z
+  containerStatuses:
+    - containerID: docker://abcd...
+      ready: true
+...
+
+
+to be ready, all the containers of the pod must be ready and readiness gates must be true. mentional the conditions in readinessGates and if that condition doesn't exist in status.conditions - it will be considered false.
+
+The new Pod conditions must comply with Kubernetes label key format. Since the kubectl patch command still doesn’t support patching object status, the new Pod conditions have to be injected through the PATCH action using one of the KubeClient libraries. (QJenny, https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-readiness-gate)
+
+
+restartPolicy of a pod means restart of all containers of the pod. UJenny https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+
+
+Pods with a phase of Succeeded or Failed for more than some duration (determined by terminated-pod-gc-threshold in the master) will expire and be automatically destroyed.
+
+3 types of controllers are available -
+    1. job - for pods that expected to terminate- with restartpolicy onFailure or never (ex. batch computations)
+    2.  ReplicationController, ReplicaSet, or Deployment - for Pods that are not expected to terminate, for example, web servers. restartpolicy always
+    3. Use a DaemonSet for Pods that need to run one per machine, because they provide a machine-specific system service.
+QJenny
+
+
+If a node dies or is disconnected from the rest of the cluster, Kubernetes applies a policy for setting the phase of all Pods on the lost node to Failed.
+
+
+
+UJenny pod examples - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#examples
+
+## init containers
+all init containes must complete before app containers are started.
+podStatus has status.initContainerStatuses
+diff from regular - resources. don't support readinessProbe because they must run to completion before they can be ready
+run one after another
+ex-
+1. if something cannot be run in app container for security reasons, it is included in init
+2. for setup. there is no need to make an image FROM another image just to use a tool like sed, awk, python, or dig during setup. QJenny
+3. application image builder and deployer roles
+4. uses linux namespaces, so has access to secrets that app container cant have
+5. block or delay the startup of app containers until some pre-conditions are met
+
+exaples: UJenny https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#examples
+practical: UJenny https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#init-containers-in-use
+detailed behavior: UJenny https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#detailed-behavior
+
+if the Pod restartPolicy is set to Always, the Init Containers use RestartPolicy OnFailure.
+
+
+## Pod Preset
+
+k8s struct - https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#detailed-behavior
+
+
+
+
+
+do the init container + container thing- now.
+
+
+
+
+
+
 
 
 
