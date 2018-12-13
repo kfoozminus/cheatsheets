@@ -91,7 +91,7 @@
     - QJenny
   - `curl http://localhost:<mentioned-or-default-port>/api/v1/namespaces/default/pods/$POD_NAME/proxy/` (from my laptop)
     - QJenny - shows yaml-like things
-  - `kubectl logs <pod-name>` - Anything that the application would normally send to STDOUT becomes logs for the container within the Pod (ommitted name of container as we have only one container now)
+  - `kubectl logs <pod-name>` - Anything that the application would normally send to STDOUT becomes logs for the container within the Pod (ommitted name of container as we have only one container now). `-f` flag continues to watch
   - `kubectl exec <pod-name> <command>` - we can execute commands directly on the container once the Pod is up and running. (here we ommitted the container name as there's only one container in our pod)
     - `kubectl exec -it <pod-name> bash` - lets us use the bash inside the container(again, we have one container)
     - we can use `curl localhost:8080` to from inside the container (after accessing bash of the pod)
@@ -1070,7 +1070,82 @@ ex-
 5. block or delay the startup of app containers until some pre-conditions are met
 
 exaples: UJenny https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#examples
-practical: UJenny https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#init-containers-in-use
+
+
+
+
+
+### init containers in use
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: initonservice
+  labels:
+    app: initonservice
+spec:
+  containers:
+    - name: initonservice
+      image: busybox
+      command:
+        - sh
+        - -c
+        - while true; do echo app is running; sleep 1; done
+      imagePullPolicy: IfNotPresent
+  initContainers:
+    - name: init-myservice
+      image: ubuntu
+      command:
+        - sh
+        - -c
+        - "apt-get update; apt-get install dnsutils -y; until nslookup myservice; do echo waiting for myservice; sleep 2; done"
+    - name: init-mydb
+      image: ubuntu
+      command:
+        - sh
+        - -c
+        - "apt-get update; apt-get install dnsutils -y; until nslookup mydb; do echo waiting for mydb; sleep 2; done"
+  restartPolicy: Always
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: myservice
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mydb
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9377
+```
+
+`until` command in `busybox` doesn't work. so used ubuntu and installed `dnsutils` (which includes nslookup). 
+
+`nslookup <service-name>.default.svc.cluster.local` this command works
+if your `/etc/resolve.conf` contains
+```
+search default.svc.cluster.local svc.cluster.local cluster.local
+```
+mentioning only `<service-name>` will work
+
+
+
+
+
+
+
+
+
 detailed behavior: UJenny https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#detailed-behavior
 
 if the Pod restartPolicy is set to Always, the Init Containers use RestartPolicy OnFailure.
@@ -1078,13 +1153,37 @@ if the Pod restartPolicy is set to Always, the Init Containers use RestartPolicy
 
 ## Pod Preset
 
-k8s struct - https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#detailed-behavior
+k8s struct - https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/settings/types.go#L29
+it is an api resource. used to injecting additional runtime requirements into a pod at creation time.
+label selector is used to select pods for podPreset
+by using pod template, we don't have to explicitly provide all the info to pod template.
+authors of pod template don't need to know all details of a service hes consuming
+
+### How it works
+- the PodPreset (admission controller) applies Pod Presets to incoming pod creating requests.
+- when a pod creation occurs, the system retrieves all `PodPresets` avaialable for use, selects the pod that has labels matched with selector of PodPresets. then it attempts to merge the resources defined by podPreset with the pod and document the error if merge error happens. finally, annotate the resulting pod specifying it has been modified by a PodPreset. the annotation is of the form `podpreset.admission.kubernetes.io/podpreset-<pod-preset name>: "<resource version>"`
+- PodPreset has the following field - `selector`, `Env`, `EnvFrom`, `Volumes`, `VolumeMounts`
+- changes in env, envfrom, volumemounts, k8s modifies all container spec
+- changes in volume, k8s modifies the pod spec
+- no resource definition from PodPreset will be applied to initContainers
+- to disable pod preset to specific pod, annotate the podSpec as `podpreset.admission.kubernetes.io/exclude: "true"`
+- to enable podPreset: https://kubernetes.io/docs/concepts/workloads/pods/podpreset/#enable-pod-preset
+
+## Disruptions
+Pods do not disappear until someone (a person or a controller) destroys them, or there is an unavoidable hardware or system software error.
+
+https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+
+
+## ReplicaSet
+- diff with replicationController - it supports set-based selector requirement, while replicatonController suppoprt only equality-based selector requirements
+- `rolling-update` doesn't support replicaset, but supports replication controllers and deployment. for rolling-update, deployment is recommended
+- deployment + rollout is recommended"
 
 
 
 
 
-do the init container + container thing- now.
 
 
 
