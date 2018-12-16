@@ -1223,7 +1223,7 @@ QJenny https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#rep
 
 ## Deployments
 - `containers` list of containers belonging to the pod. cannot be currently added or removed
-- `kubectl rollout status`
+- `kubectl rollout status deploy <name>`
 - `kubectl get pods --show-labels`
 - deployment creates pods and automatically make labels with `pod-template-hash-value`
 - replicaset name = deploy-name + pod-template-hash-value (QJenny - k8s said this should match, in my pc, doesn't match)
@@ -1272,7 +1272,7 @@ REVISION  CHANGE-CAUSE
 7         changing to bad image
 ```
 
-`kubectl rollout undo deploy <name> --to-revision=2` does back to revision-2
+`kubectl rollout undo deploy <name> --to-revision=2` goes back to revision-2
 
 
 
