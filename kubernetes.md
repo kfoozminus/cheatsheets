@@ -1336,7 +1336,7 @@ failed rollouts don't enter into `rollout history`
 - ordered and automated rolling updates
 - limitations: need to create a headless service, PersistentVolume provisioner, deleting/scaling doesn't delete the volumes (for data safety)
 - `serviceName` is the service that govern the statefulset. it must exist before the statefulset. responsible for network identity of the set
-- pods has dns/hostname like : `pod-specific-string.serviceName.default.svc.cluster.local`, `pod-specific-string` is managed by statefulset controller
+- pods has dns/hostname like : `pod-specific-string.serviceName.default.svc.cluster.local`, `pod-specific-string` is managed by statefulset controller. `cluster.local` is the cluster-domain (QJenny)
 - like deployment, gotta mention `spec.selector`
 
 
@@ -1346,6 +1346,13 @@ failed rollouts don't enter into `rollout history`
 
 
 `spec.volumeClaimTemplates.spec.accessModes` will can have values `ReadWriteOnce`, `ReadOnlyMany`, `ReadWriteMany`
+
+- `ordinal index` for n replicas, each pod will the receive integer ordinal - 0 to n-1
+- `stable network id` hostname of each pod - stateful_name-ordinal_index, e.g, book-0, book-1 etc.
+- the headless service controls the domain of the pods.
+- the domain takes the form `service-name.namespace.svc.cluster.local` (so this is the service domain) where `cluster.local` is cluster domain
+- now each pod gets its matching dns subdomain as `podname.service-domain`
+- another example of pod dns : `web-0.nginx.jennyns.svc.kube.local`
 
 
 
