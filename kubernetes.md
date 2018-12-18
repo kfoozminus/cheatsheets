@@ -1353,12 +1353,198 @@ failed rollouts don't enter into `rollout history`
 - the domain takes the form `service-name.namespace.svc.cluster.local` (so this is the service domain) where `cluster.local` is cluster domain
 - now each pod gets its matching dns subdomain as `podname.service-domain`
 - another example of pod dns : `web-0.nginx.jennyns.svc.kube.local`
+- statefulset adds a label to each pod - `statefulset.kubernetes.io/pod-name` (helps to attach service)
+- there's another label i can see - `controller-revision-hash` QJenny
 
+- pods are created 0 to n-1, deleted n-1 to 0
+- after web-1 is created, if web-0 is failed, web-2 won't be launched before web-0 is relaunched
+- all predecessors of a pod must ready before scaling operation of a pod and all successors must be completely shutdown before termination
+
+- stateful pods should not be force deleted. so `pod.spec.terminationPeriodSeconds` must not be 0. it is the difference between termination signal to processes in the pods and the kill signal. so it must be longer than expected cleanup time of processes. defualts to 30s.
+- if scaled down from 3 to 1, web-0 will remain. if web-0 fails after web-2 is terminated, web-1 won't terminate before web-0 is relaunched
+- relax ordering policy by `spec.podManagementPolicy`. can be `OrderedReady` or `Parallel`. at most one pod is changed in first one
+
+```
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+```
+
+- `spec.UpdateStrategy` can be of `type` - `RollingUpdate` and `OnDelete`. default is first one.
+- rollingupdate updates the pod according to ordering constraints. terminates and creates the pod right after termination in decreasing order
+- onDelete will happen only when we delete pods manually (legacy behavior - difficult to replace), and then replace that pod with new pod that reflects the update
+- `rollingupdate.partition` update (by changing `spec.template`) will happen to those >= to the ordinal. even if the non-update pods are deleted they will created by previous template. can be > #replicas, in that case, no update will happen. useful to stage an update, previous version, roll out canary (canary release)
+
+
+
+- experiment: did a bad image update, last pod got stuck while creating, corrected the mistake, still stuck (i guess for ordering constraints), manually deleted the pod,
+- deleting a random pod (rollingupdate strategy) will create that pod again. no problem with ordering constraint
+- doesn't start en event before finishing one? unlike deployment? made a bad image to web-0, scaled down. didn't scaled down - got stuck in ImagePullBackOff
+
+
+
+## Service
+- service defines a logical set of pod and a policy to access them
+- For Kubernetes-native applications, Kubernetes offers a simple Endpoints API that is updated whenever the set of Pods in a Service changes. For non-native applications, Kubernetes offers a virtual-IP-based bridge to Services which redirects to the backend Pods.
+- service, pods are REST objects. they can be POSTed to apiserver to create new instances
+```
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376
+```
+- selector selects pods. if not mentioned, its assumed external process is managing its endpoints which k8s will not modify. ignored if service.type is ExternalName
+- selector are evaluated constantly and will be POSTed to `Endpoints` object named like the service
+
+`kubectl get endpoints` shows all endpoints with their pod-ip
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booklist5
+  labels:
+    app: booklist5
+spec:
+  replicas: 2
+  template:
+    metadata:
+      name: booklist5
+      labels:
+        app: booklist5
+    spec:
+      containers:
+        - name: booklist51
+          image: kfoozminus/booklistgo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+        - name: booklist52
+          image: kfoozminus/booklist:alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4321
+              name: exposed
+            - containerPort: 80
+              name: ashi
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: booklist5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booklist5
+spec:
+  selector:
+    app: booklist5
+  ports:
+    - targetPort: exposed
+      port: 1234
+      name: exposeds
+    - targetPort: 8080
+      port: 5050
+      name: exposeds2
+    - targetPort: ashi
+      port: 50
+      name: ashis
+  type: NodePort
+```
+
+- this deployment has one pod. the pod has 2 containers. one container exposed 8080 to the pod `container.ports.containerPort` (optional field, this doesn't prevent `EXPOSE 8080` in the Dockerfile), which gets mapped to 5050 `service.spec.ports.port` in the service with the name `exposeds2`. other container has 2 ports exposed, with the name `exposed` and `ashi`. these two gets mapped to 1234 and 50, by mentioning the names in `service.spec.ports.targetPort` (this field can be string or int32). the service will have a clusterID, determined by master. total 3 ports and the deploy has 2 replicas - so total 6 endpoints. so you can access this service by clusterIP:port, from inside the cluster. and by minikube-ip:nodePort, from outside the cluster. and access a specific pod with podIP:targetPort from inside the cluster
+- if targetPort is string/name, this name can have different ports in different pods, that are managed by that service - so if you change port in a pod, you don't break anything
+
+`minikube ssh` enter your minikube cluster
+
+`service.ports.name` must be included if there's more than one port
+
+- services without selectors
+- Real life example
+- https://github.com/appscode/service-broker/blob/master/hack/dev/service_for_locally_run.yaml#L10
+
+```
+kind: Service
+apiVersion: v1
+metadata:
+  name: myendpointservice
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: myendpoint
+subsets:
+  - addresses:
+      - ip: 10.0.2.2
+    ports:
+      - port: 8080
+```
+
+- usually when we use selectors, service creates some `Endpoints` object. here we are using no selector, but manually creating endpoints
+- used when cluster needs to access something on your local machine
+- `subsets.addresses` are used to access a specific endpoint by `ip` and `port` from inside a cluster. final addresses can be found by cartesian product of `ip` and `port`.
+- when controlling pods, `ip` contains all pod-ip's and `port` contains all the exposed port from the containers in a pod. so. cartesian product, right?
+
+- `10.0.2.2` gets the host machine from the VM. we can access this ip inside the cluster (as pod-ip)
+- ran a go server (which is running on localhost:8080 in my pc), now enterd `minikube ssh` and accesses this go server by `10.0.2.2` - how does this work? where do we get this ip? QJenny
+
+- endpoint live-config file for previous service example
+```
+subsets:
+- addresses:
+  - ip: 172.17.0.38
+    nodeName: minikube
+    targetRef:
+      kind: Pod
+      name: booklist5-db76c94f5-qm7js
+      namespace: default
+      resourceVersion: "478338"
+      uid: 908f99de-02b9-11e9-8af4-080027893a7d
+  - ip: 172.17.0.45
+    nodeName: minikube
+    targetRef:
+      kind: Pod
+      name: booklist5-db76c94f5-hgll5
+      namespace: default
+      resourceVersion: "478301"
+      uid: 8f49deca-02b9-11e9-8af4-080027893a7d
+  ports:
+  - name: exposeds2
+    port: 8080
+    protocol: TCP
+  - name: ashis
+    port: 80
+    protocol: TCP
+  - name: exposeds
+    port: 4321
+    protocol: TCP
+```
+- note that, `subsets` is an array. we think like - same things are in same set (as cartesian product thing is going on)
+- `nodeName` in which node the pod is
+- `ports.name` must be included if there's more than one port
+
+
+
+# Common config name meaning
+- `Generation` increases if anything is changed in config
 
 
 # types.go
 deployment = k8s/api/apps/v1/
-service = k8s/api/core/v1/
+pod, container, service, endpoint = k8s/api/core/v1/
 
 
 
@@ -1372,8 +1558,6 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 - `NodePort` e.g, `1234:31562/TCP`, an object in the cluster will access the service by `ClusterIP:1234` and from outside the cluster, `minikubeip:31562`.
 
 
-# Common config name meaning
-- `Generation` increases if anything is changed in config
 
 
 
@@ -1387,8 +1571,9 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 
 
 # To Do:
-  - make list of all the ports/ip
-  - you need get, create, patch permissin for `kubectl apply` (dipta vai)
+- make list of all the ports/ip
+- you need get, create, patch permissin for `kubectl apply` (dipta vai)
+- https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#deployment-and-scaling-guarantees - If a user were to scale the deployed example by patching the StatefulSet such that replicas=1, web-2 would be terminated first. web-1 would not be terminated until web-2 is fully shutdown and deleted. If web-0 were to fail after web-2 has been terminated and is completely shutdown, but prior to web-1’s termination, web-1 would not be terminated until web-0 is Running and Ready. - Can I do that experiment? can web-0 communicate with web-2 so that after web-2 is terminated, web-0 will fail in its will?
 
 
 
