@@ -1538,6 +1538,78 @@ subsets:
 
 
 
+- theory how it works(kube-proxy, userspace, proxy-mode) https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+- `clusterIP` is usually assigned by master. users can mention too. `None` as value will create headless service.
+
+
+
+- `route -n` shows routing table in any machine
+- each node has `kube-proxy`. responsible for implementing virtual ip.
+- `proxy-mode:userspace` kube-proxy watches master for change in `service` and `endpoints`. opens a port in local node(minikube?). any connections to `proxy port` will be proxied to one of the pods. pod is selected upon `SessionAffinity`. then with iptables, clusterIP (virtaul ip) and port to proxy-port which proxies the backend pod. chooses backend with round-robin
+- `proxy-mode:iptables` watches master. installs iptable, clusterIP and port to service's `backend sets`. each endpoint, install iptable, selects a pod. chooses backend by random. doesn't switch between userspace and kernelspace. so faster. but cannot automaticallt retry another pod if one pod is down. so depends on working `readiness probes`
+- `proxy-mode:ipvs` [ipvs](https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-ipvs) not just round-robin. has least connection, destination hashing, source hashing, shortest expected delay, never queue
+
+- with any proxy-model, any traffic is routed from service-ip:port to backend without client knowing anything about k8s/service/pods.
+- `spec.SessionAffinity` can be clientIP or None. default is none
+- `spec.sessionAffinityConfig.clientIP.timeoutSeconds` is 10800 (3 hours) by default if sessionAffinity is clientIP
+
+
+- must be within `service-cluster-ip-range`. apiserver return 442 if it is invalid
+- why not round-robin dns? https://kubernetes.io/docs/concepts/services-networking/service/#why-not-use-round-robin-dns QJenny
+
+
+- discovers services in 2 ways - env and dns
+- enter a pod `kubectl exec` and `env`- you will see ALL the service ip and port
+- dns: if enabled, services can be discovered from any pod from dns record `<service-name>.ns`. also supports `DNS SRV`'.
+- if you want to query for port named http with tcp protocol : then you can do DNS SRV (service) query for `_http._tcp.service-name.ns` QJenny
+- dns server is the only way to access `ExternalName`
+
+
+- headless service - `spec.clusterIP` is `None` (`type` is `ClusterIP` by default)
+- kube-proxy doesn't handle these services, no load-balancing or proxying done
+- headless with selectors: creates endpoints records in api, modifies dns config to return addresses that points to pods backing the service
+- without selectors: QJenny https://kubernetes.io/docs/concepts/services-networking/service/#without-selectors
+
+
+-`ClusterIP` is for inside the cluster
+
+
+
+- `NodePort` master will allocate a `nodePort` in the `--service-node-port-range` (default: 30000 ~ 32767). if you try to hit that nodeip:nodeport from outside, it will be proxied to the service. here, nodeip = any-node-ip, nodeport is same (`service.spec.ports.nodePort`)
+- `NodePort` also creates `ClusterIP`
+- a specific ip can be set by `--nodeport-addresses` flag in kube-proxy QJenny
+
+
+- `loadBalancer` we cannot add loadBalancer in minikube, as we don't have any. It creates `NodePort` and `ClusterIP` too. created a loadBalancer type service and test the nodePort
+- QJenny - what's the difference betweeen `spec.externalIP` and `spec.loadBalancerIP`
+- https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+
+- `loadBalancerIP` is only for type `LoadBalancer`, `externalIP` can be for others?
+- if loadBalancerIP is added, sanjid vai said, outsiders can hit `loadBalancerIP:port` (`service.spec.ports.port`)
+
+
+
+- QJenny ExternalName https://kubernetes.io/docs/concepts/services-networking/service/#externalname
+- QJenny ExternalIP https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+- QJenny can I test externalIP with my localhost/realip? do I put ip of the master node here in real life?
+- QJenny we never hit an address with any port. does that mean they always listen to port 80?
+
+
+- QJenny https://kubernetes.io/docs/concepts/services-networking/service/#shortcomings
+
+- QJenny ip-vip, userspace-iptables-ipvs https://kubernetes.io/docs/concepts/services-networking/service/#the-gory-details-of-virtual-ips
+
+
+
+
+### DNS
+
+
+
+
+
+
+
 # Common config name meaning
 - `Generation` increases if anything is changed in config
 
