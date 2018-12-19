@@ -1550,8 +1550,8 @@ subsets:
 - `proxy-mode:ipvs` [ipvs](https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-ipvs) not just round-robin. has least connection, destination hashing, source hashing, shortest expected delay, never queue
 
 - with any proxy-model, any traffic is routed from service-ip:port to backend without client knowing anything about k8s/service/pods.
-- `spec.SessionAffinity` can be clientIP or None. default is none
-- `spec.sessionAffinityConfig.clientIP.timeoutSeconds` is 10800 (3 hours) by default if sessionAffinity is clientIP
+- `spec.SessionAffinity` can be clientIP or None. default is none. QJenny what's this?
+- `spec.sessionAffinityConfig.clientIP.timeoutSeconds` is 10800 (3 hours) by default if sessionAffinity is clientIP. QJenny
 
 
 - must be within `service-cluster-ip-range`. apiserver return 442 if it is invalid
@@ -1604,7 +1604,10 @@ subsets:
 
 ### DNS
 
-
+- services get dns name
+- a pod in `foo` namespace will lookup `svc1` by `svc1` and a pod in another ns will look up this by `svc.foo`
+- normal (not headless) services are assigned DNS A record for a name (resolves to `ClusterIP`)
+- headless services are also assigned similarly `svcname.ns.svc.cluster.local`, but resolves to set of IPs of the pods. clients have to consume the set or select using round robin
 
 
 
