@@ -1605,9 +1605,36 @@ subsets:
 ### DNS
 
 - services get dns name
+- kubedns server return A record
 - a pod in `foo` namespace will lookup `svc1` by `svc1` and a pod in another ns will look up this by `svc.foo`
-- normal (not headless) services are assigned DNS A record for a name (resolves to `ClusterIP`)
-- headless services are also assigned similarly `svcname.ns.svc.cluster.local`, but resolves to set of IPs of the pods. clients have to consume the set or select using round robin
+- A record: normal (not headless) services are assigned DNS A record for a name (resolves to `ClusterIP`). headless services are also assigned similarly `svcname.ns.svc.cluster.local`, but resolves to set of IPs of the pods. (enter a pod and use `nslookup` to check services. you'll get one ip for normal service and multiple ip's for headless service) clients have to consume the set or select using round robin
+- SRV record: for normal service, `_port-name._protocol.myservice.ns.svc.cluster.local` would resolve into port number and domain name `myservice.ns.svc.cluster.local` and for headless service, it would resolve into (for each pod) port number and pod domain `auto-generated-name-for-pod.myservice.ns.svc.cluster.local` QJenny
+
+- pod domain: `pod-ip-address.ns.pod.cluster.local` 1.2.3.4 would get DNS A record `1-2-3-4.default.pod.cluster.local` (with port 80)
+- you can't change any field in the pod spec other than image/activeDeadlineSeconds/tolerations
+- `pod.spec.hostname` gets the `pod.spec.name` if not specified. `pod.spec.name` gets system-defined-value if not specified. you can check hostname by entering the pod and shell command `hostname`
+
+
+- QJenny - experiment: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-hostname-and-subdomain-fields
+    - sleep = 1, 5, 20, 3600
+    - at first, created it without the port. nslookup doesn't get the service.
+    - deleted. again, created without port. nslookup gets it. then configured and deleted the port. nslookup now gets the service.
+
+
+- put `pod.spec.subdomain` as it's service's `name`, then the pod will get dng A record with the name `pod-hostname.subdomain.ns.svc.cluster.local` (FQDN - fully qualified domain name)
+- so pod gets 2 A record? one in `pod.cluster.local`, another in `svc.cluster.local` (if subdomain is specified)
+
+
+- if a node dies, pod dies too. new pods are created with new ip. service solves the problem. new pods are linked to that service.
+
+
+`kubectl exec <pod-name> -- echo hi` prints hi in your terminal
+
+
+
+## Volumes
+- if container crashes, every data is lost
+- 
 
 
 
@@ -1631,6 +1658,8 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 # Service Ports
 - `ClusterIP` by this, any object can access a service
 - `NodePort` e.g, `1234:31562/TCP`, an object in the cluster will access the service by `ClusterIP:1234` and from outside the cluster, `minikubeip:31562`.
+- you CAN access any pod from anywhere, even if you DONT have service. with exposed port.
+- services create engpoints. `kubectl get endpoints` shows `pod-ip:service-targetport`. but you actually access a pod by `pod-ip:container-exposed-ip`. service-targetport and container-exposed-ip have to match. even if they match, you can access the pod by pod-ip.
 
 
 
