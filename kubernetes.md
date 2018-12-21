@@ -1625,16 +1625,32 @@ subsets:
 - so pod gets 2 A record? one in `pod.cluster.local`, another in `svc.cluster.local` (if subdomain is specified)
 
 
+- UJenny DNS policy https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+
+
 - if a node dies, pod dies too. new pods are created with new ip. service solves the problem. new pods are linked to that service.
 
 
 `kubectl exec <pod-name> -- echo hi` prints hi in your terminal
 
 
+- pods only gets env of those services, which was created before the pod.
+```
+BOOKLISTKUBE2_PORT_4321_TCP_PORT=4321
+BOOKLISTKUBE2_PORT_4321_TCP_PROTO=tcp
+BOOKLISTKUBE2_SERVICE_HOST=10.104.123.160
+BOOKLISTKUBE2_PORT_4321_TCP=tcp://10.104.123.160:4321
+```
+
+QJenny CoreDNS cluster addon, kube-dns
+
+
+
+
 
 ## Volumes
 - if container crashes, every data is lost
-- 
+-
 
 
 
