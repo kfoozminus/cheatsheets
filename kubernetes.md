@@ -1644,20 +1644,88 @@ BOOKLISTKUBE2_PORT_4321_TCP=tcp://10.104.123.160:4321
 
 QJenny CoreDNS cluster addon, kube-dns
 
-
+#### Secret (Object)
 
 
 
 ## Volumes
 - if container crashes, every data is lost
--
+- k8s volume has same lifetime as pod. if container crashes, volume outlives.
+- docker is at the root of the filesystem hierarchy. volumes cannot mount into other volumes
+- `awsEBS` contents of an ebs volume are preserved when the pod dies, just merely unmounted
+- `cephfs` data is preserved. unmounted when pod dies
 
+#### ConfigMap (Object)
+- `ConfigMap` object holds config data for pods to consume
+- `kubectl create configmap <config-name> --from-file=<file-name>` adds files as `ConfigMap.data`
+-
+```
+data:
+  game.properties: |-
+    enemies=aliens
+    lives=3
+    enemies.cheat=true
+    enemies.cheat.level=noGoodRotten
+    secret.code.passphrase=UUDDLRLRBABAS
+    secret.code.allowed=true
+    secret.code.lives=30
+
+```
+- you can use `--from-file` multiple times to mention multiple files
+- `--from-env-file` to bring from a env-file (contains `VAR=VAL` format. strings in the value can be attached too)
+- multiple `--from-env-file` uses only last one
+-
+```data:
+  allowed: '"true"'
+  enemies: aliens
+  lives: "3"
+```
+- here file-name is the key-name
+- to change the key-name, you can mention `--from-file=<key-name>`
+- `--from-literal=<key>=<value>`
+
+- containers can consume data from config
+```
+      env:
+        - name: SPECIAL_LEVEL_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: special.how
+```
+- `valueFrom` can be used if `value` is not used
+- in the above code, you can also attach command to echo the env.
+
+
+
+```
+containers:
+- name: test-container
+  image: k8s.gcr.io/busybox
+  command: [ "/bin/sh", "-c", "ls /etc/config/" ]
+  volumeMounts:
+  - name: config-volume
+    mountPath: /etc/config
+volumes:
+- name: config-volume
+  configMap:
+    # Provide the name of the ConfigMap containing the files you want
+    # to add to the container
+    name: special-config
+```
+- `containers.volumeMounts.name` must match `volumes.name`.
+- `volumes.configMap.name` can locate an object
+- `volumes.configMap.items` if not specified, takes all, else takes the specified ones. key = filename, value = content
+- change the configmap, takes time to affect
 
 
 
 
 # Common config name meaning
 - `Generation` increases if anything is changed in config
+- `containers.command` overwrites entrypoint
+- `contaienrs.args` arguments to entrypoint
+- LocalObjectReference (`.name`) can locate ab object in the same namespace
 
 
 # types.go
