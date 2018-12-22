@@ -1725,7 +1725,7 @@ volumes:
 - `Generation` increases if anything is changed in config
 - `containers.command` overwrites entrypoint
 - `contaienrs.args` arguments to entrypoint
-- LocalObjectReference (`.name`) can locate ab object in the same namespace
+- LocalObjectReference (`.name`) can locate an object in the same namespace
 
 
 # types.go
