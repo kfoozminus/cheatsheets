@@ -1655,7 +1655,7 @@ QJenny CoreDNS cluster addon, kube-dns
 - `awsEBS` contents of an ebs volume are preserved when the pod dies, just merely unmounted
 - `cephfs` data is preserved. unmounted when pod dies
 
-#### ConfigMap (Object)
+#### [ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/) (Object)
 - `ConfigMap` object holds config data for pods to consume
 - `kubectl create configmap <config-name> --from-file=<file-name>` adds files as `ConfigMap.data`
 -
@@ -1671,6 +1671,7 @@ data:
     secret.code.lives=30
 
 ```
+- `|-` leaves the trailing newline
 - you can use `--from-file` multiple times to mention multiple files
 - `--from-env-file` to bring from a env-file (contains `VAR=VAL` format. strings in the value can be attached too)
 - multiple `--from-env-file` uses only last one
@@ -1709,14 +1710,35 @@ containers:
 volumes:
 - name: config-volume
   configMap:
-    # Provide the name of the ConfigMap containing the files you want
-    # to add to the container
     name: special-config
 ```
 - `containers.volumeMounts.name` must match `volumes.name`.
-- `volumes.configMap.name` can locate an object
+- `containers.volumeMount.mountPath`
+- `containers.volumeMount.readOnly`
+- `containers.volumeMount.subPath`
+- `volumes.configMap.name` can locate an object (LocalObjectReference) (in same namespace)
 - `volumes.configMap.items` if not specified, takes all, else takes the specified ones. key = filename, value = content
-- change the configmap, takes time to affect
+```
+  volumeMounts:
+    - name: game-config-volume-mount
+      mountPath: /home/jenny
+  volumes:
+    - name: game-config-volume-mount
+      configMap:
+        name: game-config
+        items:
+          - key: game.properties
+            path: game-folder/game-file
+```
+- `path` mentions the relative path in the container volume where this key/file should be saved
+- change the configmap, takes time to affect (kubelet sync period + ttl of configmaps cache in kubelet)
+- A container using a ConfigMap as a subPath volume will not receive ConfigMap updates.
+- QJenny used configMap to a container's volume. readOnly is false. but cannot create file there. sayd 'it's read only file system'
+
+- configmap is like secrets, but easier for strings (not sensitive info)
+- if you mention keys that don't exist, pods wont start. (except for `envFrom`, pods will start, but will be added to `InvalidVariableNames` in event log, and be skipped - `kubectl get events`)
+- the pod (that is using configmap) must be in apiserver (pods created via the Kubelet’s –manifest-url flag, –config flag, or the Kubelet REST API are not allowed QJenny)
+
 
 
 
@@ -1758,10 +1780,11 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 
 
 
-# To Do:
+# TODO:
 - make list of all the ports/ip
 - you need get, create, patch permissin for `kubectl apply` (dipta vai)
 - https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#deployment-and-scaling-guarantees - If a user were to scale the deployed example by patching the StatefulSet such that replicas=1, web-2 would be terminated first. web-1 would not be terminated until web-2 is fully shutdown and deleted. If web-0 were to fail after web-2 has been terminated and is completely shutdown, but prior to web-1’s termination, web-1 would not be terminated until web-0 is Running and Ready. - Can I do that experiment? can web-0 communicate with web-2 so that after web-2 is terminated, web-0 will fail in its will?
+- YAML https://github.com/helm/helm/blob/master/docs/chart_template_guide/yaml_techniques.md#scalars-and-collections
 
 
 
