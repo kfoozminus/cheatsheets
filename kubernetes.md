@@ -1682,7 +1682,7 @@ data:
   lives: "3"
 ```
 - here file-name is the key-name
-- to change the key-name, you can mention `--from-file=<key-name>`
+- to change the key-name, you can mention `--from-file=<key-name>=<file-name>`
 - `--from-literal=<key>=<value>`
 
 - containers can consume data from config
@@ -1733,11 +1733,41 @@ volumes:
 - `path` mentions the relative path in the container volume where this key/file should be saved
 - change the configmap, takes time to affect (kubelet sync period + ttl of configmaps cache in kubelet)
 - A container using a ConfigMap as a subPath volume will not receive ConfigMap updates.
-- QJenny used configMap to a container's volume. readOnly is false. but cannot create file there. sayd 'it's read only file system'
+- used configMap to a container's volume. readOnly is false. but cannot create file there. sayd 'it's read only file system'. most probably cause the volume contains exactly what configmap contains
 
 - configmap is like secrets, but easier for strings (not sensitive info)
 - if you mention keys that don't exist, pods wont start. (except for `envFrom`, pods will start, but will be added to `InvalidVariableNames` in event log, and be skipped - `kubectl get events`)
 - the pod (that is using configmap) must be in apiserver (pods created via the Kubelet’s –manifest-url flag, –config flag, or the Kubelet REST API are not allowed QJenny)
+
+#### EmptyDir
+```
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+```
+- empty tmp dir that share pod's lifetime
+- `emptyDir.medium` can be "" or `Memory` (tmpfs - RAM backed filesystem) (data lost if node is restarted)
+- safe accross container crashes, deleted if pod is deleted
+- can write
+
+#### hostpath
+- usually used to access to host's system agents or other privileged things, or Docker internals(`/var/lib/docker`), running cAdvisor (QJenny) or
+- allows pods to check if a given hostPath exists before the pod is started
+- `hostPath.type` - `""`(backwards compatible = no checks will be performed), directoryorcreate, directory, fileorcreate, file, socket, chardevice, blockdevice ([link](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) QJenny last 3?)
+- host is `Node`, your minikube, not your machine. enter to `minikube ssh` and you'll see the files you created inside your pod
+- data is permanent
+- used `Directory` (which must exist) and put something which doesn't exist, pod remians in `ContainerCreating` mode
+- hostPath volume inside a pod give write permission to only root of the node (minikube). so if you want write from minikube, you either `sudo su` or `chmod -R 747 <directory>` from minikube or pod (so initially `file's owner` is both's root. changing permission changes from both filesystem)
+
+
+
 
 
 
@@ -1766,6 +1796,14 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 - `NodePort` e.g, `1234:31562/TCP`, an object in the cluster will access the service by `ClusterIP:1234` and from outside the cluster, `minikubeip:31562`.
 - you CAN access any pod from anywhere, even if you DONT have service. with exposed port.
 - services create engpoints. `kubectl get endpoints` shows `pod-ip:service-targetport`. but you actually access a pod by `pod-ip:container-exposed-ip`. service-targetport and container-exposed-ip have to match. even if they match, you can access the pod by pod-ip.
+
+
+
+
+
+
+# Others
+- `hostnamectl` inside minikube to see your node's (vm) os and stuff
 
 
 
