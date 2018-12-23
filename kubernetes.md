@@ -1644,13 +1644,130 @@ BOOKLISTKUBE2_PORT_4321_TCP=tcp://10.104.123.160:4321
 
 QJenny CoreDNS cluster addon, kube-dns
 
-
+#### Secret (Object)
 
 
 
 ## Volumes
 - if container crashes, every data is lost
+- k8s volume has same lifetime as pod. if container crashes, volume outlives.
+- docker is at the root of the filesystem hierarchy. volumes cannot mount into other volumes
+- `awsEBS` contents of an ebs volume are preserved when the pod dies, just merely unmounted
+- `cephfs` data is preserved. unmounted when pod dies
+
+#### [ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/) (Object)
+- `ConfigMap` object holds config data for pods to consume
+- `kubectl create configmap <config-name> --from-file=<file-name>` adds files as `ConfigMap.data`
 -
+```
+data:
+  game.properties: |-
+    enemies=aliens
+    lives=3
+    enemies.cheat=true
+    enemies.cheat.level=noGoodRotten
+    secret.code.passphrase=UUDDLRLRBABAS
+    secret.code.allowed=true
+    secret.code.lives=30
+
+```
+- `|-` leaves the trailing newline
+- you can use `--from-file` multiple times to mention multiple files
+- `--from-env-file` to bring from a env-file (contains `VAR=VAL` format. strings in the value can be attached too)
+- multiple `--from-env-file` uses only last one
+-
+```data:
+  allowed: '"true"'
+  enemies: aliens
+  lives: "3"
+```
+- here file-name is the key-name
+- to change the key-name, you can mention `--from-file=<key-name>=<file-name>`
+- `--from-literal=<key>=<value>`
+
+- containers can consume data from config
+```
+      env:
+        - name: SPECIAL_LEVEL_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: special.how
+```
+- `valueFrom` can be used if `value` is not used
+- in the above code, you can also attach command to echo the env.
+
+
+
+```
+containers:
+- name: test-container
+  image: k8s.gcr.io/busybox
+  command: [ "/bin/sh", "-c", "ls /etc/config/" ]
+  volumeMounts:
+  - name: config-volume
+    mountPath: /etc/config
+volumes:
+- name: config-volume
+  configMap:
+    name: special-config
+```
+- `containers.volumeMounts.name` must match `volumes.name`.
+- `containers.volumeMount.mountPath`
+- `containers.volumeMount.readOnly`
+- `containers.volumeMount.subPath`
+- `volumes.configMap.name` can locate an object (LocalObjectReference) (in same namespace)
+- `volumes.configMap.items` if not specified, takes all, else takes the specified ones. key = filename, value = content
+```
+  volumeMounts:
+    - name: game-config-volume-mount
+      mountPath: /home/jenny
+  volumes:
+    - name: game-config-volume-mount
+      configMap:
+        name: game-config
+        items:
+          - key: game.properties
+            path: game-folder/game-file
+```
+- `path` mentions the relative path in the container volume where this key/file should be saved
+- change the configmap, takes time to affect (kubelet sync period + ttl of configmaps cache in kubelet)
+- A container using a ConfigMap as a subPath volume will not receive ConfigMap updates.
+- used configMap to a container's volume. readOnly is false. but cannot create file there. sayd 'it's read only file system'. most probably cause the volume contains exactly what configmap contains
+
+- configmap is like secrets, but easier for strings (not sensitive info)
+- if you mention keys that don't exist, pods wont start. (except for `envFrom`, pods will start, but will be added to `InvalidVariableNames` in event log, and be skipped - `kubectl get events`)
+- the pod (that is using configmap) must be in apiserver (pods created via the Kubelet’s –manifest-url flag, –config flag, or the Kubelet REST API are not allowed QJenny)
+
+#### EmptyDir
+```
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+```
+- empty tmp dir that share pod's lifetime
+- `emptyDir.medium` can be "" or `Memory` (tmpfs - RAM backed filesystem) (data lost if node is restarted)
+- safe accross container crashes, deleted if pod is deleted
+- can write
+
+#### hostpath
+- usually used to access to host's system agents or other privileged things, or Docker internals(`/var/lib/docker`), running cAdvisor (QJenny) or
+- allows pods to check if a given hostPath exists before the pod is started
+- `hostPath.type` - `""`(backwards compatible = no checks will be performed), directoryorcreate, directory, fileorcreate, file, socket, chardevice, blockdevice ([link](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) QJenny last 3?)
+- host is `Node`, your minikube, not your machine. enter to `minikube ssh` and you'll see the files you created inside your pod
+- data is permanent
+- used `Directory` (which must exist) and put something which doesn't exist, pod remians in `ContainerCreating` mode
+- hostPath volume inside a pod give write permission to only root of the node (minikube). so if you want write from minikube, you either `sudo su` or `chmod -R 747 <directory>` from minikube or pod (so initially `file's owner` is both's root. changing permission changes from both filesystem)
+
+
+
 
 
 
@@ -1658,6 +1775,9 @@ QJenny CoreDNS cluster addon, kube-dns
 
 # Common config name meaning
 - `Generation` increases if anything is changed in config
+- `containers.command` overwrites entrypoint
+- `contaienrs.args` arguments to entrypoint
+- LocalObjectReference (`.name`) can locate an object in the same namespace
 
 
 # types.go
@@ -1682,6 +1802,14 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 
 
 
+# Others
+- `hostnamectl` inside minikube to see your node's (vm) os and stuff
+
+
+
+
+
+
 
 # Tasks
   - https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
@@ -1690,10 +1818,11 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 
 
 
-# To Do:
+# TODO:
 - make list of all the ports/ip
 - you need get, create, patch permissin for `kubectl apply` (dipta vai)
 - https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#deployment-and-scaling-guarantees - If a user were to scale the deployed example by patching the StatefulSet such that replicas=1, web-2 would be terminated first. web-1 would not be terminated until web-2 is fully shutdown and deleted. If web-0 were to fail after web-2 has been terminated and is completely shutdown, but prior to web-1’s termination, web-1 would not be terminated until web-0 is Running and Ready. - Can I do that experiment? can web-0 communicate with web-2 so that after web-2 is terminated, web-0 will fail in its will?
+- YAML https://github.com/helm/helm/blob/master/docs/chart_template_guide/yaml_techniques.md#scalars-and-collections
 
 
 
