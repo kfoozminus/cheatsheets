@@ -1765,6 +1765,35 @@ spec:
 - data is permanent
 - used `Directory` (which must exist) and put something which doesn't exist, pod remians in `ContainerCreating` mode
 - hostPath volume inside a pod give write permission to only root of the node (minikube). so if you want write from minikube, you either `sudo su` or `chmod -R 747 <directory>` from minikube or pod (so initially `file's owner` is both's root. changing permission changes from both filesystem)
+- if you use directoryorcreate - creates empty dir with 0755. fileorcreate produces 0644
+- you CAN mount a volume more than one to your pod. even you can mount inside another mount (the same volume!)
+```
+          volumeMounts:
+            - name: emptyvol
+              mountPath: /etc/empty
+            - name: hostpathvol
+              mountPath: /etc/kfoozminus
+            - name: hostpathvol
+              mountPath: /etc/kfoozminus/kfoozfolder
+            - name: hostpathvol2
+              mountPath: /etc/afifa
+      restartPolicy: Always
+      volumes:
+        - name: emptyvol
+          emptyDir: {}
+        - name: hostpathvol
+          hostPath:
+            path: /home/kfoozminus/jenny
+            type: DirectoryOrCreate
+        - name: hostpathvol2
+          hostPath:
+            path: /home/kfoozminus/afifa
+            type: FileOrCreate
+```
+
+
+- 
+
 
 
 
