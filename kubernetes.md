@@ -1792,12 +1792,102 @@ spec:
 ```
 
 
-- 
+
+## PVC
+- pv is like node, pvc is like pod
+- pod requests resources, pvc requests size/access modes
+- create a pv from physical storage. not used yet.
+- cluster user creates a pvc, automatically bound to a pv
+- create a pod that uses the pvc
+- https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/
+- UJenny Access Control https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#access-control
+- hostPath for testing and development in single node. in production, use gce persistent disk, nfs share, amazon ebs
+- after you create a pvc, if control plane finds a suitable pv with same storage class, with requirements (at least)
+- if storage class is empty, it means doesn't belong to any storage class (will show empty)
+- if storage class is not mentioned, it will belong to standard
+- readWriteOnce means the volume can be mounted as read-write by a single Node
+- if you try to delete a pv, that is used by a pvc, that will be in Terminating stage until you delete that pvc ( https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection )
+- storage class: standard (default) or custome (even "" is a kind of storage class)
+- diff between "" and new storageclass, in case of empty one, you don't have to create the class to use pvc (but there must be pv of empty storage class, because empty one can't create a dynamic pv)
+- a storage class is responsible for creating dynamic pv
+
+- if you try to assign a pvc to standard, and no pv exists meeting that demand, that pvc create a pv from standard storageclass.
+- pvc and pv is ont-to-one mapping, so if pv uses 10gb, pvc uses 3gb - capacity of pvc is 10gb
+- access mode must match of pvc and pv
+- if you create a pvc (standard), if there's no pv, automatically one will be created, and if that pvc is deleted, that pv will be deleted automatically too (because default dynamic policy is delete)
+- even if there's a pv, which can meet the requirement, I can see by `kubectl get pv -w` that some intermediate pv is created and released
+- pvc's are updated automatically, so pending ones will be bound if a suitable pv is created (A control loop watches over the pvc)
+
+```
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: task-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: task-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+```
+
+
+
+- now use a pod that will use the pvc, which will be actually used as a wrapper around a pv, that is owned by someone else (system)
+- hostpath is maintained by pv, not pvc
+
+```
+kind: Pod
+apiVersion: v1
+metadata:
+  name: task-pv-pod
+spec:
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+       claimName: task-pv-claim
+  containers:
+    - name: task-pv-container
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: task-pv-storage
+```
+
+- volume has name and volumesource - not a resource(yaml)
+- persistent volume has meta/object data, spec, status (like a node)
+- persistent volume spec has persistent volume source, cap, accessmodes, storageclassname
+- `pod.spec.volumes.volumesource/persistenvolumeclaim.readOnly` overwrites `containers.volumeMounts.readOnly`
+- `pod.spec.volumes.persitenvolumeclaim.claimName` must match the pvc object
+- if pvc finalizer contains `kubernetes.io/pvc-protection` or pv finalizer contains `kubernetes.io/pvc-protection`, it won't be deleted till it is used (`metadata.finalizers`). this list must be empty to delete the object
+- pvc get everything from pv (capacity, accessmodes)
+- policy: dynamic pv gets policy from storage class (which defaults to delete).
+- otherwise default is `Retain`
 
 
 
 
-
+# To Gutaguti
+- diff between VolumeSource & PersistentVolumeSource
 
 
 
