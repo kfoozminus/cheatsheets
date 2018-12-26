@@ -1880,14 +1880,53 @@ spec:
 - `pod.spec.volumes.persitenvolumeclaim.claimName` must match the pvc object
 - if pvc finalizer contains `kubernetes.io/pvc-protection` or pv finalizer contains `kubernetes.io/pvc-protection`, it won't be deleted till it is used (`metadata.finalizers`). this list must be empty to delete the object
 - pvc get everything from pv (capacity, accessmodes)
+- pv has reclaiming policy
 - policy: dynamic pv gets policy from storage class (which defaults to delete).
 - otherwise default is `Retain`
+- `Recycle` if pvc deleted, data is lost, pv is available again. it is deprecated, use dynamic provisioning
+- `Delete` if pvc deleted, data not lost (I think that depends on type of volume, I used hostPath here). showed `failed` because hostPath deleter supports only `/tmp` as mount path, I used `/mnt/data`, changed it to `/tmp`. then after pvc is deleted, pv is deleted automatically
+- `Retain` deleted pvc, pv is released, can't be used again. if create pvc again, new (dynamin or avaialble) pv is used
+
+- UJenny https://kubernetes.io/docs/concepts/storage/persistent-volumes/#recycle
+
+- You can only expand a PVC if its storage class’s `allowVolumeExpansion` field is set to true. specify a larger volume for pvc, pv isn't created anew. instead, existing volume is resized
+
+- `statefulset.spec.volumeclaimtemplates` every claim must have one mapping in `containers.volumemout`. this takes precedence over with same name in `template.spec.volumes`
+- pv has `mountOptions` as `hard`, `nfsvers=4.1`, `ro`, `soft` QJenny
+- not every volume supports mountOptions - https://kubernetes.io/docs/concepts/storage/persistent-volumes/#mount-options
+- `pv.volumeMode` = raw/filesystem. filesystem is default. QJenny diff between raw device and block device
+- `pv.accessModes` different for different volume type https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+- `pvc.selector` selects the volume with this label. both matchlabel and matchexpressin are ANDed
+
+
+- if pv doesn't mention storageClass, it belongs to "". if pvc doesn't mention, it goes to standard
+- default storage class shits https://kubernetes.io/docs/concepts/storage/persistent-volumes/#class-1 UJenny
+
+- pv binds are exclusive, pvc are namespace objects, mounting claims with `Many` modes (ROX, RWX) are possible within one namespace QJenny
+
+- UJenny Raw block volume support https://kubernetes.io/docs/concepts/storage/persistent-volumes/#raw-block-volume-support
+
+- volumesnapshotcontent is like pv, volumesnapshot is like pvc
+- supported in only csi driver
+- An administrator can mark a specific StorageClass as default by adding the `storageclass.kubernetes.io/is-default-class` annotation to it.
+
+
+
+
+- k8s has default limits on the number of volumes that can be attached to a Node - aws ebs 39, google persistent disk 16, azure 16
+- can be changed by setting the value `KUBE_MAX_PD_VOLS`
+- dynamic volume limits https://kubernetes.io/docs/concepts/storage/storage-limits/#dynamic-volume-limits
+
 
 
 
 
 # To Gutaguti
 - diff between VolumeSource & PersistentVolumeSource
+- statefulset.volumeclaimtemplates https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#components
+- nfs https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes
+- local
+- `pv.volumeMode`, `mountOptions`
 
 
 
@@ -1902,6 +1941,9 @@ spec:
 # types.go
 deployment = k8s/api/apps/v1/
 pod, container, service, endpoint = k8s/api/core/v1/
+
+
+- resource model https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/resources.md
 
 
 
