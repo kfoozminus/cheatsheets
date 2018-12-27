@@ -395,8 +395,44 @@ if uppercase - it can be exported outside of package
 
 //dynamic type of interface also called as concrete type as when we access type of interface, it returns type of it’s underlying dynamic value and it’s static type remains hidden.
 
+
+
+### [Concurrency](https://medium.com/rungo/achieving-concurrency-in-go-3f84cbf870ca)
+
+- concurrency: doing different things concurrently, basically dividing the time between tasks
+- parallelism: different core doing different tasks in parallel
+- concurrency is dealing with multiple things at once, parallelism is doing multiple things
+- go recommends using goroutines on one core, but we can modify to run in different cores
+- when a program is sent to OS - a process has a primary thread, which creates other threads. when primary thread is done, the process exits
+- process is a container that has compiled code, memory, OS resources, which is provided to threads. a process is a program in the memory
+- thread is a lightwright process inside a process. actual executor of a piece of code.
+- thread store variables in memory, called stack, fixed size of 1-2 MB. not shared with other threads
+- process has heaps - shared memory among all threads of that process
+- start a browser (program) - it will divide into different process like opening another tab - one process will open different threads like downloading, listening to music, browsing
+- in multi-threading, threads need to be scheduled so that they work at a particular data at one time
+- os threads are scheduled by kernel, some threads by runtime environment like JRE
+- `race condition` a data is changed by other thread, while one thread is doing things - https://stackoverflow.com/questions/34510/what-is-a-race-condition
+- use lock to prevent this
+- java has a thread class to create multiple threads in a single process
+- goroutine is an abstraction over threads
+- `go runtime` will create few threads where multiple goroutines are spreaded/spawned/multiplexed. if one goroutine is terminated, another goroutine will come to that thread.
+- this process by go runtime is much faster than thread scheduling
+- if you want to use more than one cores, set `GOMAXPROCS` or use the function `runtime.GOMAXPROCS(n)`. but if you program communicates with channels more than computation, then increasing cores might degrade performance
+- go has a `M:N` scheduler - schedules M goroutines among N os threads with GOMAXPROCS number of processors. normally, only one thread runs (in one core). when gomaxprocs is 1, go scheduler gives the upper hand to one goroutine then another, until all are finished
+- there's a chart of differences between thread and goroutine. READ IT!
+    - thread managed by kernel, has hardware dependency. goroutines by go runtime, doesn't have hardware dependency
+    - threads have stack of 1-2MB, goroutines have 8KB
+    - stack cannot grow, can grow upto 1GB
+    - huge latency between inter-thread communication, goroutines use channels to communicate with other goroutine QJenny
+    - threads have tid, goroutines doesn't have any id because go doesn't have thread local storage ([TLS](https://docs.microsoft.com/en-us/windows/desktop/ProcThread/thread-local-storage))
+    - threads are scheduled preemptively, switching cost is high as scheduler needs to save 50 states and registers. goroutines are non-preemptive (cooperative) which saves only 3 registers
+    - 
+
+
+
 TODO: go get
 
+GC: https://blog.twitch.tv/gos-march-to-low-latency-gc-a6fa96f06eb7
 
 //go install vs go build
 https://pocketgophers.com/go-install-vs-go-build/
@@ -404,7 +440,7 @@ go binary overwrites native shell commands - how to avoid this?
 //so when you type a command, it will search in every $PATH, in what order?
 go help
 
-what if different files in same folder contains different "package ___", what will "go install" or "go install ___" do?
+what if different files in same folder contains different "package <name>", what will "go install" or "go install <name>" do?
 
 
 You are not allowed to re-declare global variable with same name in the same package. Hence, once version variable is declared, it can not be re-declared in the package scope. But you are free to re-declare elsewhere. --- https://medium.com/rungo/everything-you-need-to-know-about-packages-in-go-b8bac62b74cc

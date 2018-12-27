@@ -1920,6 +1920,84 @@ spec:
 
 
 
+## Config
+- group related objects in same file
+- `kubectl create -f /dir`
+- don't write default values unnecessarily
+- use annotations
+- don't use bare pods
+- create service before pods
+- don't use environment variable for dns lookups (only for old software)
+- don't specify `hostPort` unless necessary. hostIP is 0.0.0.0 by default
+- avoid hostNetwork too
+- `app: myapp, tier: frontend, phase: test, deployment: v3` as labels. idientifies semantic attributes
+- use labels to debug. take a pod and remove its label (to remove it from a service, it will be replaces, so no problem) and debug the pod
+- if imagePullPolicy is ommitted - if image tag is `latest` or ommitted, `Always` is applied - if image tag is present but not `latest`, `IfNotPresent` is applied
+- to make sure to use same version of the image always : use [digest](https://docs.docker.com/engine/reference/commandline/pull/#pull-an-image-by-digest-immutable-identifier)
+- avoid using latest, because it is always gonna be updated. will be problem to track down the releases
+- The caching semantics of the underlying image provider make even `imagePullPolicy: Always` efficient. With Docker, for example, if the image already exists, the pull attempt is fast because all image layers are cached and no image download is needed.
+- use labels to `get` and `delete` operation instead of object names.
+```
+     labels:
+        app: guestbook
+        tier: frontend
+     labels:
+        app: guestbook
+        tier: backend
+        role: master
+     labels:
+        app: guestbook
+        tier: backend
+        role: slave
+```
+- `kubectl get pods -Lapp` shows all pods with the label `app` as key
+- `kubectl get pods -l app` same
+- cpu in units of cores, memory in units of bytes
+- 
+```
+spec.containers[].resources.limits.cpu
+spec.containers[].resources.limits.memory
+spec.containers[].resources.requests.cpu
+spec.containers[].resources.requests.memory
+```
+- cpu - 0.5, 0.1 (100m - one hundred millicpu/millicores) are allowed. precision finer than 1m is not allowed. so 100m might be preferrable format
+- You can express memory as a plain integer or as a fixed-point integer using one of these suffixes: E, P, T, G, M, K. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.
+- 64MiB - 2^26 bytes
+- pods are scheduled in node after capacity check
+- how resources are processed https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#how-pods-with-resource-limits-are-run
+- troubleshooting https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#troubleshooting
+    - My Pods are pending with event message failedScheduling
+    - My Container is terminated
+- [ephemeral storage](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#local-ephemeral-storage) UJenny
+- [extended resources](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#extended-resources) UJenny
+- [curl patch](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#other-resources) UJenny
+
+
+
+
+- [built-in node labels](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels)
+```
+kubernetes.io/hostname
+failure-domain.beta.kubernetes.io/zone
+failure-domain.beta.kubernetes.io/region
+beta.kubernetes.io/instance-type
+beta.kubernetes.io/os
+beta.kubernetes.io/arch
+```
+
+- `node-restriction.kubernetes.io/` - https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-isolation-restriction
+
+
+## Secrets
+- used to hold password, OAuth tokens, ssh
+- user and system both can create secret
+- pod references the secret in 2 ways - volume or by kubelet when pulling images for the pod QJenny
+- service account automatically create and attach secrets with API https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ UJenny
+
+
+
+
+
 
 # To Gutaguti
 - diff between VolumeSource & PersistentVolumeSource
@@ -1944,6 +2022,7 @@ pod, container, service, endpoint = k8s/api/core/v1/
 
 
 - resource model https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/resources.md
+- resource QoS https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/resource-qos.md
 
 
 
@@ -1974,6 +2053,7 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 
 # Tasks
   - https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
 
 
 
