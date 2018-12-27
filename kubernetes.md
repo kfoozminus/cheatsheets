@@ -1920,6 +1920,20 @@ spec:
 
 
 
+## Config
+- group related objects in same file
+- `kubectl create -f /dir`
+- don't write default values unnecessarily
+- use annotations
+- don't use bare pods
+- create service before pods
+- don't use environment variable for dns lookups (only for old software)
+- don't specify `hostPort` unless necessary. hostIP is 0.0.0.0 be default
+- 
+
+
+
+
 
 # To Gutaguti
 - diff between VolumeSource & PersistentVolumeSource
