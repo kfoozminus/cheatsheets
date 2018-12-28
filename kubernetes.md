@@ -63,7 +63,6 @@
     - configured the cluster to reschedule the instance on a new node when needed
     - Q: fahim couldn't run the deployment because he didn't have `EXPOSE` in his Dockerfile. After adding the line, deployment ran. And `--port` value in `kubectl run` command doesn't have to match `EXPOSE` value. Why?
     - `kubectl run busyboxkube --image=busybox` pods doesn't run because the os container have nothing to do - it will be in `Running` status as long as it has something to do - Shudipta added a infinite loop and it ran and you can run `kubectl exec -it <pod-name> sh` and run various comamnds on sh.
-      - QJenny - fahim asked how can I access bash/sh from it and run commands
   - `kubectl get deployments` shows the deployments, their instances and state.
   - `kubectl proxy` creates a proxy - so far kubectl were communicating with k8s cluster using api, but after proxy command we can communicate with k8s api too (through browser or curl)
 
@@ -123,32 +122,22 @@
 ### Commands:
   - `kubectl get services`
   - `kubectl expose deployment/<deployment-name> --type="NodePort" --port 4321` created a new service and exposed it as NodePort type. minikube doesn't support LoadBalancer yet.
-    - QJenny - Here target-port must be same as the one we exposed in Dockerfile - the deployment is deploying a container based on the dockerfile and the container exposed the target-port mentioned - and If we are creating a Service whose job is to watch that deployment/Pods/Container, we have to watch this on same port
     - when we are mentioning `--port` and not mentioning `--target-port`, target-port takes the --port by default
     - my `EXPOSE` in Dockerfile is `4321`, we can access the service only if `--target-port` is `4321`
-    - QJenny - so what is --port in `kubectl expose`
-    - QJenny - what is --port in `kubectl run`
-    - QJenny - So a cluster can have multiple services?
     - services works on pods - a service can have pods from multiple nodes
   - `kubectl describe services/<service-name>` shows details
-    - QJenny - service name or deployment name?
   - `export NODE_PORT=$(kubectl get services/kubernetes-bootcamp -o go-template='{{(index .spec.ports 0).nodePort}}')`
     - `curl $(minikube ip):$NODE_PORT`
       - `minikube ip` shows the node-ip
       - browse `192.168.99.100:30250`
   - `kubectl describe deployment` shows name of the label among many other infos
-  - QJenny
-    - how does services work? service labels? everything has labels?
   - `kubectl get pods -l run=<pod-label>`
     - `kubectl get pods -l run=booklistkube2`
   - `kubectl get services -l run=<service-label>`
     - `kubectl get services -l run=booklistkube2`
-    - QJenny - pod-label? service-label? I guess It's deployment-name? by run=<deployment-name> we are using the default label of a pod. and I guess `run` is an attribute? Later we used `app` attribute?
   - `export POD_NAME=$(kubectl get pods -o go-template --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')`
     - QJenny
   - `kubectl label pod <pod-name> app=<varialbe-name>` applies a new label (pinned the application version to the pod)
-    - this doesn't add this label to the service - so we are sure that : although service/pod had same label `run=booklistkube2` they are different
-    - QJenny - `app` is an attribute? what are the other attributes?
   - `kubectl describe pods <pod-name>`
     - if we use `-l` flag, `use <pod-label>`
     - otherwise, use `<pod-name>`
@@ -189,7 +178,6 @@
   - `kubectl get deploy booklistkube2` will now show the scaling up event
   - `kubectl describe services <service-name>` shows 4 endpoints as `IP:4321` (4 different IP and one common port).
     - creating replicas will automatically be added to the service
-    - QJenny - Here `port` is `--port` (I don't know what it does). TargerPort is `--targer-port` - the one we exposed in Dockerfile. NodePort is 31562. The one we're gonna use to access the service from browser. I guess NodePort is mapped to TargetPort
   - open `kubectl get pods -w`, `kubectl get deploy -w`, `kubectl get replicaset -w` in 3 pane and scale/edit a deployment in another pane and see the changes :D
     - replicaset name + different extension = different pod name
     - scaling up/down doesn't change the replicaset name - because old pods are useful. but updating deployment replaces every pod - so new replicaset name and pod name.
@@ -238,47 +226,41 @@
   - Master components can be run on any machine in the cluster - usually set up scripts start all master components on the same machine and do not run user containers on this machine.
   - `kube-apiserver` exposes k8s api - front end for k8s control plane. designed to scale horizontally, that is - it scales by deploying more instances (QJenny - vertical scaling is creating new replicas with increased resources?)
   - `etcd` is key value store used as k8s' backing store for all cluster data.
-    - QJenny - Doc said, Always have backup plan for etcd's data for your k8s cluster.
-  - `kube-scheduler` schedules newly created pods to nodes based on indivifual and collective resource requirements, hardware/software/policy constraints, affinity and anti-affinity specifications, data locality, inter-workload interface and deadlines.
-    - QJenny
+  - `kube-scheduler` schedules newly created pods to nodes based on individual and collective resource requirements, hardware/software/policy constraints, affinity and anti-affinity specifications, data locality, inter-workload interface and deadlines.
   - `kube-controller manager` runs controllers. Logically, each controller is a seperate process, but to reduce complexity, they are all compiled into a single binary and run in a single process
     - `Node Controller` is responsible for noticing and responding when nodes go down
     - `Replication Controller` is responsible for maintaining correct number of pods
     - `Endpoints Controller` populates the Endpoints object (joins Services and Pods)
     - `Service Account & Token Controllers` create default accounts and API access tokens for new namespaces.
-    - QJenny
   - `cloud-controller-manager` runs controllers that interact with the underlying cloud providers. It runs cloud-provider-specific controller loops only, must disable these controller loops in the kube-controller-manager by setting `--cloud-provider` flag to  `external`. It allows cloud vendors code and k8s core to evolve independent of each other. In prior releases, the core k8s code was dependent upon cloud-provider-specific code for functionality. In future releases, code specific to cloud vendors should be maintained by the cloud vendor themselves, and linked to cloud-controller-manager while running k8s. These controllers have cloud provider dependencies:
     - `Node Controller` for checking the cloud provider to determine if a node has been deleted in the cloud after it stops responding.
     - `Route Controller` for setting up routes in the underlying cloud infrastructure
     - `Service Controller` for creating, updating and deleting cloud provider load balancers
     - `Volume Controller` for creating, attaching and mounting volumes, and interacting with the cloud provider to orchestrate volumes
-    - QJenny
 
 
 ### Node Components
   - `kubelet` runs on each in the cluster, takes a set of PodSpecs and ensures that the containers are running and healthy.
   - `kube-proxy` enables k8s service abstraction by maintaining network rules on the host and performing connection forwarding
-    - QJenny
-  - `Container Runtime` is the software that is responsible for running containers, e.g. Dcocker, rkt, runc, any OCI runtime-spec implementation
-    - QJenny
+  - `Container Runtime` is the software that is responsible for running containers, e.g. Docker, rkt, runc, any OCI runtime-spec implementation
 
 
 
 ### Addons
   - Addons are pods and services that implement cluster features. They may be managed by Deployments, ReplicationControllers. Namespaced addon objects are created in `kube-system` namespace.
-    - QJenny
+    - UJenny
   - `DNS` - all k8s clusters should have cluster DNS, as many examples rely on it. Cluster DNS is DNS server, in addition to the other DNS server(s) in your environment, which serves DNS records for k8s services. Containers started by k8s automatically include this DNS server in their DNS searches
-    - QJenny
+    - UJenny
   - `Web UI`(Dashboard)
   - `Container Resource Monitoring` records generic time-series metrics about containers in a central database and provides a UI for browsing that data
-    - QJenny
+    - UJenny
   - `Cluster-level Logging` is responsible for saving container logs to central log store with search/browsing interface
-    - QJenny
+    - UJenny
 
 
 ## K8s API
   - https://kubernetes.io/docs/concepts/overview/kubernetes-api/
-    - QJenny
+    - UJenny
   - API continuously changes
   - to make it easier to eliminate fields or restructure resource representation, k8s supports multiple API versions, each at a different API path, such as `/api/v1` or `/apis/extensions/v1beta1`
   - Alpha: e.g, `v1alpha1`. may be buggy.
@@ -293,71 +275,69 @@
     - available resources
     - policies areound how those applications behave (restart, upgrade, fault-tolerance)
   - Objects represents the cluster's desired state
-  - `kubectl` is used to create/modify/delete the objects through api calls. alternatively, [client libraries](https://kubernetes.io/docs/reference/using-api/client-libraries/) can be used
-    - QJenny
+  - `kubectl` is used to create/modify/delete the objects through api calls. alternatively, client-go can be used
   - Every k8s object has two field - the object spec is provided, it describes desired state. The object status describes the actual status of the object. k8s control plane actively manages actual state to match the desired state
     - deployment is an object. spec can have no of replicas to make. it one fails, k8s replaces the instance.
 
 
 ### Describing K8s Object
-  - k8s api is used (either directly or via kubectl) to create an object. that API request must have some information as JSON in the request body. I provide the information to kubectl in a `.yaml` file. kubectl convert the info to JSON
-  -
-    ```apiVersion:
-    kind:
+- k8s api is used (either directly or via kubectl) to create an object. that API request must have some information as JSON in the request body. I provide the information to kubectl in a `.yaml` file. kubectl convert the info to JSON
+-
+```apiVersion:
+kind:
+metadata:
+  name:
+  labels:
+    app:
+spec:
+  replicas:
+  template:
     metadata:
       name:
       labels:
         app:
     spec:
-      replicas:
-      template:
-        metadata:
-          name:
-          labels:
-            app:
-        spec:
-          containers:
-            - name:
-              image:
-              imagePullPolicy: IfNotPresent
-              ports:
-              - containerPort:
-          restartPolicy: Always
-      selector:
-        matchLabels:
-          app:
-    ```
-    - [Deployment struct](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
-    - `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
-    - `kind` Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. Cannot be updated. +optional
-    - `metadata` Standard object metadata. +optional
-      - `name` Name must be unique within a namespace. Cannot be updated. +optional
-      - `labels` Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. +optional
-        - `app` is key of the map (Why isn't it string? QJenny)
-      - `uid` UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations. +optional
-    - `spec` Specification of the desired behavior of the Deployment. +optional
-      - `replicas` Number of desired pods. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1. +optional
-      - `template` Template describes the pods that will be created.
-        - `metadata` Standard object's metadata. +optional
-          - `name` same
-          - `labels` same
-            - `app` same
-        - `spec` Specification of the desired behavior of the pod. +optional
-          - `containers` List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
-            - `name` Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.
-            - `image` Docker image name. This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets. +optional (QJenny)
-            - `imagePullPolicy` Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. +optional
-              - Always means that kubelet always attempts to pull the latest image. Container will fail If the pull fails.
-              - Never means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
-              - IfNotPresent means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
-            - `ports` List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Cannot be updated. +optional
-              - `containerPort` Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536. (QJenny)
-          - `restartPolicy` Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. +optional (QJenny when does container restarts if it's `Always`?)
-      - `selector` Label selector for pods. Existing ReplicaSets whose pods are selected by this will be the ones affected by this deployment. It must match the pod template's labels. (Selector selects the pods that will be controlled. if the matchLabels is a subset of a pod, then that pod will be selected and will be controlled. If we change no of replicas then these pods will be affected? QJenny)
-        - `matchLabels` matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed. +optional. type: map[string]string
-          - `app` is a key
-    - QJenny - what is +optional? (Nahid: +optional thakle user empty dite parbe, na dile nil hobe. +optional na thakle na dile empty hobe??? :/ )
-    - `apiVersion`, `kind`, `metadata` is required.
+      containers:
+        - name:
+          image:
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort:
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app:
+```
+- [Deployment struct](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/apps/v1/types.go#L250)
+- `apiVersion` defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. +optional
+- `kind` Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. Cannot be updated. +optional
+- `metadata` Standard object metadata. +optional
+  - `name` Name must be unique within a namespace. Cannot be updated. +optional
+  - `labels` Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. +optional
+  - `uid` UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations. +optional
+- `spec` Specification of the desired behavior of the Deployment. +optional
+  - `replicas` Number of desired pods. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1. +optional
+  - `template` Template describes the pods that will be created.
+    - `metadata` Standard object's metadata. +optional
+      - `name` same
+      - `labels` same
+        - `app` same
+    - `spec` Specification of the desired behavior of the pod. +optional
+    - `containers` List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated.
+    - `name` Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.
+    - `image` Docker image name. This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets. +optional (QJenny)
+    - `imagePullPolicy` Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. +optional
+    - Always means that kubelet always attempts to pull the latest image. Container will fail If the pull fails.
+    - Never means that kubelet never pulls an image, but only uses a local image. Container will fail if the image isn't present
+    - IfNotPresent means that kubelet pulls if the image isn't present on disk. Container will fail if the image isn't present and the pull fails.
+    - `ports` List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Cannot be updated. +optional
+    - `containerPort` Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536.
+    - `restartPolicy` Restart policy for all containers within the pod. One of Always, OnFailure, Never. Default to Always. +optional
+  - `selector` Label selector for pods. Existing ReplicaSets whose pods are selected by this will be the ones affected by this deployment. It must match the pod template's labels. (Selector selects the pods that will be controlled. if the matchLabels is a subset of a pod, then that pod will be selected and will be controlled.)
+    - `matchLabels` matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed. +optional. type: map[string]string
+      - `app` is a key
+- QJenny - what is +optional? (Nahid: +optional thakle user empty dite parbe, na dile nil hobe. +optional na thakle na dile empty hobe??? :/ )
+- `apiVersion`, `kind`, `metadata` is required.
 
 
 ## Names & UID
@@ -385,9 +365,9 @@
   - `kubectl delete ns <new-namespace>` deletes a namespace
   - `kubectl config view` shows the file `~/.kube/config`
     - clusters: here we have only minikube cluster, with its certificates and server. minikube cluster is running in that ip:port. `192.168.99.100` (minikube ip) comes from here
-    - users: kubectl communicates with k8s api, as a user(name: minikube (QJenny)). that user is defined here with its certificates and stuff
+    - users: kubectl communicates with k8s api, as a user(name: minikube (UJenny)). that user is defined here with its certificates and stuff
     - context: configurations - we have one context. a context has cluster/user/namespace/name
-    - QJenny
+    - UJenny
   - `kubectl config current-context` shows current-context field of the config file
   - `kubectl config set-context $(kubectl config current-context) --namespace=<ns>` sets a ns as default, any changes you make/create objects will be done to this namespace
   - most k8s resources (pods, services, replication controllers etc.) are in some namespaces. low-level resources (nodes, persistentVolumes) are not in namespace.
@@ -399,19 +379,18 @@
 ### DNS
   - When you create a Service, it creates a corresponding DNS entry. This entry is of the form <service-name>.<namespace-name>.svc.cluster.local, which means that if a container just uses <service-name>, it will resolve to the service which is local to a namespace.
   - This is useful for using the same configuration across multiple namespaces such as Development, Staging and Production. If you want to reach across namespaces, you need to use the fully qualified domain name (FQDN).
-  - QJenny
 
 
 ## Labels and Selectors
   - to specify identifying attributes of objects - meaningful and relevant (but do not directly imply semantics to the core system). used to organize and seelect subsets of objects. can be attached at creation/added/modified.
   - key can be anything, but have to be unique (within a object). e.g, `release`, `environment`, `tier`, `partition`, `track`
-  - Labels are key/value pairs. Valid label keys have two segments: an optional prefix and name, separated by a slash (/). The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels separated by dots (.), not longer than 253 characters in total, followed by a slash (/). If the prefix is omitted, the label Key is presumed to be private to the user. Automated system components (e.g. kube-scheduler, kube-controller-manager, kube-apiserver, kubectl, or other third-party automation) which add labels to end-user objects must specify a prefix. The kubernetes.io/ prefix is reserved for Kubernetes core components. (QJenny)
+  - Labels are key/value pairs. Valid label keys have two segments: an optional prefix and name, separated by a slash (/). The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (`_`), dots (.), and alphanumerics between. The prefix is optional. If specified, the prefix must be a DNS subdomain: a series of DNS labels separated by dots (.), not longer than 253 characters in total, followed by a slash (/). If the prefix is omitted, the label Key is presumed to be private to the user. Automated system components (e.g. kube-scheduler, kube-controller-manager, kube-apiserver, kubectl, or other third-party automation) which add labels to end-user objects must specify a prefix. The kubernetes.io/ prefix is reserved for Kubernetes core components.
   - many objects can have same labels
   - via a label selector, the client/user can identify a set of objects. the label selector is the core grouping primitive in k8s
   - current, the API supports two types of selectors: equality-based and set-based. A label selector can be made of multiple requirements, which are comma-separated - acts as a logical AND(&&).
     - An empty label selector selects every object in the collection
-    - A null label selector (which is only possible for optional selector fields) selects no objects (QJenny)
-    - The label selectors of two controllers must not overlap within a namespace, otherwise they will fight with each other. (QJenny - Deployment controllers? does every deployment has one controller?)
+    - A null label selector (which is only possible for optional selector fields) selects no objects (UJenny)
+    - The label selectors of two controllers must not overlap within a namespace, otherwise they will fight with each other.
 
 
 ### Equality-based requirement
@@ -438,24 +417,24 @@
     - [Pod Struct](https://github.com/kubernetes/kubernetes/blob/895f483fdfba055573681ef067e16d60df7985f8/staging/src/k8s.io/apiserver/pkg/apis/example/v1/types.go#L33)
     - `kind`, `metadata` same
     - `spec` (podSpec) same
-      - `containers` same
-        - `name`, `image` same
-        - `resources` Compute Resources required by this container. Cannot be updated. +optional
-          - `limits` Limits describes the maximum amount of compute resources allowed. +optional (this is of type ResourceList. ResourceList is a set of (resource name, quantity) pairs.) (QJenny: [Quantity](https://github.com/kubernetes/apimachinery/blob/6dd46049f39503a1fc8d65de4bd566829e95faff/pkg/api/resource/quantity.go#L88:6))
-              - `nvidia.com/gpu` is resource name, whose quantity is `1`
-      - `nodeSelector` NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. +optional
-        - `accelerator: nvidia-tesla-p100` is a node label
+    - `containers` same
+    - `name`, `image` same
+    - `resources` Compute Resources required by this container. Cannot be updated. +optional
+    - `limits` Limits describes the maximum amount of compute resources allowed. +optional (this is of type ResourceList. ResourceList is a set of (resource name, quantity) pairs.)
+    - `nvidia.com/gpu` is resource name, whose quantity is `1`
+    - `nodeSelector` NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. +optional
+    - `accelerator: nvidia-tesla-p100` is a node label
 
 
 ### Set-based requirement
   - set-based label requirements allow one key with multiple values.
-  - three kinds of operators are supported: `in`, `notin` and `exists` (only key needs to be mentioned) (QJenny)
+  - three kinds of operators are supported: `in`, `notin` and `exists` (only key needs to be mentioned)
   - `environment in (production, qa)` selects all resources with key equal to `environment` and value equal to `production` OR `qa`. (of course OR, it cannot be AND, can it? a resource cannot have multiple values for one key)
   - `tier notin (frontend, backend)` selects all resources with key equal to `tier` and values other than `frontend` and `backend` and all resources with no labels with the `tier` key
   - `partition`  selects all resources including a label with key `partition`, no values are checked
   - `!partition` selects all resources without the key `partition`; no values are checked
   - comma acts like a AND
-    - so `partition, environment notin (qa)` means the key `partition` have to exist and `environment` have to be other than `qa` (QJenny, will the resources with no `environment` be selected?)
+    - so `partition, environment notin (qa)` means the key `partition` have to exist and `environment` have to be other than `qa` (UJenny, will the resources with no `environment` be selected?)
   - Set-based requirements can be mixed with equality-based requirements. For example: `partition in (customerA, customerB), environment!=qa`
 
 
@@ -471,7 +450,7 @@
     - `kubectl get pods -l 'environment in (production, qa)'` selects `qa` or `production`
     - `kubectl get pods -l 'environment, environment notin(frontend)'` selects resources which has `environment` and it cannot be `frontend` (if i wrote `environment notin(frontend)` only, it would select the resources which doesn't have `environment` key also)
   - `services` and `replicationcontrollers` also use label selectors to select other resources as `pods`
-    - only equality-based requirements are supported (QJenny: is this restriction for deploy/pods too?)
+    - only equality-based requirements are supported (UJenny: is this restriction for deploy/pods too?)
   - newer resources, such as `job`, `deployment`, `replicaset`, `daemon set` support set-baed requirements
   ```
   selector:
@@ -484,7 +463,7 @@
   - `matchExpressions` is a list of label selector requirements. The requirements are ANDed. +optional
     - `key` is the label key that the selector applies to. type: string
     - `operator` represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-    - `values` is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. +optional (QJenny: merge patch?)
+    - `values` is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. +optional (UJenny: merge patch?)
   - All of the requirements, from both matchLabels and matchExpressions are ANDed together – they must all be satisfied in order to match.
 
 
@@ -500,14 +479,14 @@
 		}
 	}
   ```
-  - Instead of using annotations, you could store this type of information in an external database or directory, but that would make it much harder to produce shared client libraries and tools for deployment, management, introspection, and the like. (QJenny: [examples are given](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#attaching-metadata-to-objects))
+  - Instead of using annotations, you could store this type of information in an external database or directory, but that would make it much harder to produce shared client libraries and tools for deployment, management, introspection, and the like. (UJenny: [examples are given](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/#attaching-metadata-to-objects))
 
 
 ## Field Selectors
   - select k8s objects based on the value of one or more fields.
   - `kubectl get pods --field-selector status.phase=Running` selects all pods for which the value of `status.phase` is `Running`
   - `metadata.name=my-service`, `metadata.namespace!=default`, `status.phase=Pending`
-  - using unsupported fields gives error `kubectl get ingress --field-selector foo.bar=baz` gives error `Error from server (BadRequest): Unable to find "ingresses" that match label selector "", field selector "foo.bar=baz": "foo.bar" is not a known field selector: only "metadata.name", "metadata.namespace"` (QJenny: what the f is ingress)
+  - using unsupported fields gives error `kubectl get ingress --field-selector foo.bar=baz` gives error `Error from server (BadRequest): Unable to find "ingresses" that match label selector "", field selector "foo.bar=baz": "foo.bar" is not a known field selector: only "metadata.name", "metadata.namespace"` (UJenny: what the f is ingress)
   - supported operator are `=`, `==`, `!=` (first two are same). `kubectl get services --field-selector metadata.namespace!=default`
   - `kubectl get pods --field-selector metadata.namespace=default,status.phase=Running` ANDed
   - multiple resource types can also be selected
@@ -517,7 +496,7 @@
 
 ## Recommended Labels
   - https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
-  - QJenny
+  - UJenny
 
 
 ## K8s object management techniques
@@ -525,11 +504,10 @@
   - 
   ```
 	Management techniques							Operates on						Recommended environment		Supported writers		Learning curve
-	Imperative commands								Live objects					Development projects			1+									Lowest
-	Imperative object configuration		Individual files			Production projects				1										Moderate
-	Declarative object configuration	Directories of files	Production projects				1+									Highest
+	Imperative commands								Live objects					Development projects			1+					Lowest
+	Imperative object configuration		            Individual files			    Production projects				1					Moderate
+	Declarative object configuration	            Directories of files	        Production projects				1+				    Highest
   ```
-  QJenny
 
 ### Imperative commands
   - `kubectl run nginx --image nginx`
@@ -542,25 +520,24 @@
   - `kubectl create -f nginx.yaml`
   - `kubectl delete -f <name>.yaml -f <name>.yaml`
   - `kubectl replace -f <name>.yaml`
-  - Warning: The imperative replace command replaces the existing spec with the newly provided one, dropping all changes to the object missing from the configuration file. This approach should not be used with resource types whose specs are updated independently of the configuration file. Services of type LoadBalancer, for example, have their externalIPs field updated independently from the configuration by the cluster. (QJenny)
+  - Warning: The imperative replace command replaces the existing spec with the newly provided one, dropping all changes to the object missing from the configuration file. This approach should not be used with resource types whose specs are updated independently of the configuration file. Services of type LoadBalancer, for example, have their externalIPs field updated independently from the configuration by the cluster. (UJenny)
   - compared with imperative commands:
     - can be stored, provides template
     - must learn, additional step writing YAML
   - compated with declarative object config:
     - simpler and easier to learn, more mature
-    - works best on files, not directories. updates to live objects must be reflected in config file or they will be lost in next replacement (QJenny)
-  - QJenny: does flags in kubectl command overwrite corresponding .yaml file flags?
+    - works best on files, not directories. updates to live objects must be reflected in config file or they will be lost in next replacement
 
 
 ### Declarative object configuration
-  - When using declarative object configuration, a user operates on object configuration files stored locally, however the user does not define the operations to be taken on the files. Create, update, and delete operations are automatically detected per-object by kubectl. This enables working on directories, where different operations might be needed for different objects. QJenny
-  - Note: Declarative object configuration retains changes made by other writers, even if the changes are not merged back to the object configuration file. This is possible by using the patch API operation to write only observed differences, instead of using the replace API operation to replace the entire object configuration. QJenny
+  - When using declarative object configuration, a user operates on object configuration files stored locally, however the user does not define the operations to be taken on the files. Create, update, and delete operations are automatically detected per-object by kubectl. This enables working on directories, where different operations might be needed for different objects. UJenny
+  - Note: Declarative object configuration retains changes made by other writers, even if the changes are not merged back to the object configuration file. This is possible by using the patch API operation to write only observed differences, instead of using the replace API operation to replace the entire object configuration. UJenny
   - `kubectl diff -f configs/` to see what changes are going to be made
   - `kubectl apply -f configs/` process all object configuration files in the configs directory
   - `kubectl diff -R -f configs/`, `kubectl apply -R -f configs/` recursively processs directories
   - changes made directly to live objects are retained, even if they are not merged. has better support for operating on directories and automatically detecting opeartion types (create, patch, delete) per-object
   - harder to debug and understand results, partial updates using diffs create complex merge and patch operations.
-  - QJenny: the whole thing
+  - UJenny: the whole thing
 
 
 ## Using Imperative commands:
@@ -569,13 +546,13 @@
   - `autoscale`: create a new autoscaler object to automatically horizontally scale a controller, such as a deployment.
   - `create`: driven by object type
     - `create <objecttype> [<subtype>] <instancename>`
-    - `kubectl create service nodeport <name>` QJenny: how to use?
+    - `kubectl create service nodeport <name>`
   - `scale` horizontally scale a controller to add or remove
   - `annotate` add or remove an annotation
   - `label` add or remove a label
   - `set` set/edit an aspect (env, image, resources, selector etc) of an object
   - `edit` directly edit the config file
-  - `patch` directly modify specific fields of a live object by using a patch string (QJenny)
+  - `patch` directly modify specific fields of a live object by using a patch string (UJenny)
   - `delete` deletes an object
   - `get`
   - `describe`
@@ -586,7 +563,7 @@
       - `--dry-run` if it is true, only print the object that would be sent, without sending it.
     - `kubectl set selector --local -f - -o -yaml` reads the config file from stdin, write the updated configuration to stdout as YAML
     - `kubectl create -f -` command creates the object using the config provided via stdin
-    - QJenny: `--local`
+    - UJenny: `--local`
   - 
   ```
   kubectl create service clusterip <name> --clusterip="None" -o yaml --dry-run > /tmp/srv.yaml
@@ -599,8 +576,8 @@
 ## Using imperative object configuration
   - `kubectl create -f <filename/url>` creates an object from a config file
   - `kubectl replace -f <filename/url>`
-    - Warning: Updating objects with the replace command drops all parts of the spec not specified in the configuration file. This should not be used with objects whose specs are partially managed by the cluster, such as Services of type LoadBalancer, where the externalIPs field is managed independently from the configuration file. Independently managed fields must be copied to the configuration file to prevent replace from dropping them. QJenny
-  - `kubectl delete -f <filename/url>` QJenny - how does this work?
+    - Warning: Updating objects with the replace command drops all parts of the spec not specified in the configuration file. This should not be used with objects whose specs are partially managed by the cluster, such as Services of type LoadBalancer, where the externalIPs field is managed independently from the configuration file. Independently managed fields must be copied to the configuration file to prevent replace from dropping them. UJenny
+  - `kubectl delete -f <filename/url>` UJenny - how does this work?
     - ever if changes are made to live config file of the object - `delete <object-config>.yaml` also works too
   - `kubectl get -f <filename/url> -o yaml` show objects. `-o yaml` shows the yaml file
   - limitation: created a deployment from a yaml file. edited the `kubectl edit deploy <name>` (note that, this is not the yaml file from which I created the object. this is called `live configuration`). then `kubectl replace -f <object-config>.yaml` creates the object from scratch. the edit is gone. works for every kind of object.
@@ -610,7 +587,7 @@
     - then remove the status field (interestingly, the status field is automatically after exporting, although `kubectl get deploy <name> -o yaml` has the status field)
     - then run `kubectl replace -f <filename>.yaml`
     - this solves the `replace` problem
-  - Warning: Updating selectors on controllers is strongly discouraged. (QJenny: because it would affect a lot?)
+  - Warning: Updating selectors on controllers is strongly discouraged. (UJenny: because it would affect a lot?)
     - The recommended approach is to define a single, immutable PodTemplate label used only by the controller selector with no other semantic meaning. (significant labels. doesn't have to be changed again)
 
 
@@ -618,7 +595,7 @@
 
 ## [Using Declarative object configuration](https://kubernetes.io/docs/concepts/overview/object-management-kubectl/declarative-config/) (UJenny)
   - `object config file` defines the config for k8s object.
-  - `live object config`/`live config` values an object, as observed by k8s cluster. this is typically stored in `etcd` (QJenny isn't it saved in `/tmp/`)
+  - `live object config`/`live config` values an object, as observed by k8s cluster. this is typically stored in `etcd`
   - `declaration config writer`/`declarative writer` a person or software component that makes updates to a live object.
 
 ## Nodes
@@ -627,7 +604,7 @@
   - each node contains the services necessary to run pods
   - the services on a node include docker, kubelet, kube-proxy
   - a node's status contains - addresses, condition, capacity, info
-  - Node is a top-level resource in the k8s REST API. (QJenny)
+  - Node is a top-level resource in the k8s REST API.
 
 ### Addresses
   - usage of these fields depends on your cloud provider or bare metal config
@@ -654,7 +631,7 @@
   ```
   - if the status of the `Ready` condition remains `Unknown` or `False` for longer than `pod-eviction-timeout` (default 5m), an argument is passed to `kube-controller-manager` and all the pods on the node are scheduled for deletion by Node Controller. if apiserver cannot communicate with kubelet on the node, the deletion decision cannot happen until the communication is established again. in the meantime, the pods on the node continues to run, in `Terminating` or `Unknown` state.
   - prior to version 1.5, node controller force deletes the pods from the apiserver. from 1.5, if k8s cannot deduce if the node has permanently left the cluster, admin needs to delete the node by hand. then all pods will be deleted with the node.
-  - in version 1.12, `TaintNodesByCondition` feature is promoted to beta，so node lifecycle controller automatically creates taints that represent conditions. Similarly the scheduler ignores conditions when considering a Node; instead it looks at the Node’s taints and a Pod’s tolerations. users can choose between the old scheduling model and a new, more flexible scheduling model. A Pod that does not have any tolerations gets scheduled according to the old model. But a Pod that tolerates the taints of a particular Node can be scheduled on that Node. Enabling this feature creates a small delay between the time when a condition is observed and when a taint is created. This delay is usually less than one second, but it can increase the number of Pods that are successfully scheduled but rejected by the kubelet. (QJenny)
+  - in version 1.12, `TaintNodesByCondition` feature is promoted to beta，so node lifecycle controller automatically creates taints that represent conditions. Similarly the scheduler ignores conditions when considering a Node; instead it looks at the Node’s taints and a Pod’s tolerations. users can choose between the old scheduling model and a new, more flexible scheduling model. A Pod that does not have any tolerations gets scheduled according to the old model. But a Pod that tolerates the taints of a particular Node can be scheduled on that Node. Enabling this feature creates a small delay between the time when a condition is observed and when a taint is created. This delay is usually less than one second, but it can increase the number of Pods that are successfully scheduled but rejected by the kubelet. (UJenny)
 
 ### Capacity
   - describes the resources available on the node: cpu, memory, max no of pods that can be scheduled
@@ -683,7 +660,7 @@
 
 ### Node Controller
   - k8s master component which manages varioud aspects of nodes
-  - first role is assigning a CIDR block to a node when it is registered (if CIDR assignment is turned on) (QJenny)
+  - first role is assigning a CIDR block to a node when it is registered (if CIDR assignment is turned on) (UJenny)
   - second is keeping the node controller's internal list of nodes up to date with the cloud provider's list of available machines. when a node is unhealthy, the node controller asks the cloud provider if the vm for that node is still available. if not, the node controller deletes the node from its list of nodes.
   - third is monitoring the nodes' health. the node controller is responsible for updating the NodeReady condition of NodeStatus to ConditionUnknown when a node becomes unreachable and then later evicting all the pods from the node if the node continues to be unreachable(`--node-monitor-grace-period` is 40s and `pod-eviction-timeout` is 5m by defautl). the node controller checks the state of each node every `--node-monitor-period` seconds (default 5s) (QJenny where are these flags???)
   - prior to 1.13, NodeStatus is the heartbeat of a node. from 1.13, node lease feature is introduced. when this feature is enabled, each node has an associated `Lease` object in `kube-node-lease` namespace. both NodeStatus and node lease are treated as heartbeats. Node leases are updated frequently and NodeStatus is reported from node to master only when there is some change or some time(default 1 minute) has passed, which is longer than default timeout of 40 seconds for unreachable nodes. Since node lease is much more lightweight than NodeStatus, this feature makes node heartbeat cheaper.
@@ -694,7 +671,7 @@
     - Key reason for spreading the nodes across availability zone is that workload can be shifted to healthy zones when one entire zone goes down.
     - Therefore if all nodes in a zone are unhealthy then node controller evicts at the normal rate `--node-eviction-rate`
     - Corner case is, if all zones are completely unhealthy, node controller thinks there's some problem with master connectivity and stops all evictions until some connectivity is restored.
-    - Starting in Kubernetes 1.6, the NodeController is also responsible for evicting pods that are running on nodes with NoExecute taints, when the pods do not tolerate the taints. Additionally, as an alpha feature that is disabled by default, the NodeController is responsible for adding taints corresponding to node problems like node unreachable or not ready. See this documentation for details about NoExecute taints and the alpha feature. Starting in version 1.8, the node controller can be made responsible for creating taints that represent Node conditions. This is an alpha feature of version 1.8. (QJenny)
+    - Starting in Kubernetes 1.6, the NodeController is also responsible for evicting pods that are running on nodes with NoExecute taints, when the pods do not tolerate the taints. Additionally, as an alpha feature that is disabled by default, the NodeController is responsible for adding taints corresponding to node problems like node unreachable or not ready. See this documentation for details about NoExecute taints and the alpha feature. Starting in version 1.8, the node controller can be made responsible for creating taints that represent Node conditions. This is an alpha feature of version 1.8. (UJenny)
 
 ### Self-Registration of Nodes (QJenny)
   - When the kubelet flag `--register-node` is true (the default), the kubelet will attempt to register itself with the API server.
@@ -713,7 +690,7 @@
   - Number of cpus and amount of memory
   - Normally nodes register themselves and report their capacity when creating node object
   - K8s scheduler ensures that there are enough resources for all thepods on a node. The sum of the requests of containers on the node must be no greater than the node capacity. (It includes all containers started by the kubelet, not the ones started directly by dockers nor any process running outside of the containers)
-  - If you want to explicitly reserve resources for non-pod processes, you can create a placeholder pod. QJenny
+  - If you want to explicitly reserve resources for non-pod processes, you can create a placeholder pod.
   ```
   apiVersion: v1
 	kind: Pod
@@ -731,13 +708,13 @@
     - set the cpu and memory values to the amount of resources you want to reserve. Place the file in the manifest directory (`--config=DIR` flag of kubelet). do this on every kubelet you want to reserve resources. QJenny
 
 
-## Master-Node Communication (QJenny)
+## Master-Node Communication (UJenny)
   - communication paths between the master (really the apiserver) and the k8s cluster.
   - to allow users to customize their installatin to run the cluster on an untrusted network or on fully public IPs on a cloud provider
 
 ### Cluster to Master
   - all communicatin paths from the cluster to master terminate at the apiserver (`kube-apiserver`, which exposes k8s api. it is designed to expose remote services)
-  - in a typical deployment, the apiserver is configured to listen for remote connections on a secure https port (443) with one or more forms of client authentication enable, which is necessary if annonymous requests of service account tokens are allowed (QJenny)
+  - in a typical deployment, the apiserver is configured to listen for remote connections on a secure https port (443) with one or more forms of client authentication enable, which is necessary if annonymous requests of service account tokens are allowed (UJenny)
   - nodes should be provisioned with the public root certificate for the cluster such that they can connect securely to the apiserver along with valid client credentials. for example, on a default GKE(Google Kubernetes Engine) deployment, the client credentials provided to the kubelet are in the form of a client certificate.
   - pods that wish to connect to the apiserver can do so securely by taking a 'service account' so that k8s will automatically inject the public root certificate and a valid bearer token into the pod when it is instactiated.
   - the `kubernetes` service (in all namespaces) is configured with a virtual IP address that is redirected (via `kube-proxy`) to the https endpoint on the apiserver
@@ -769,7 +746,7 @@
 
 
 ## Cloud Controller Manager (CCM)
-  - this concept was originally created to allow cloud specific vendor code and k8s core to evolve independent of one another. (QJenny - vendor code)
+  - this concept was originally created to allow cloud specific vendor code and k8s core to evolve independent of one another. (UJenny - vendor code)
   - it runs alongside other master components such as the k8s controller manager, the api server, and scheduler. it can also be started as k8s addon, in which case it runs on top of k8s
   - CCM's design is based on a plugin mechanism that allows new cloud providers to integrate with k8s by using plugins
   - there are plans for migrating cloud providers from the old model to the new ccm model
@@ -782,32 +759,30 @@
 ### Components of CCM
 
   - CCM breaks away cloud dependent controller loops from kcm - Node controller, volume controller, router controller, service controller
-  - from 1.9, due to the complexity involved and due to the existing efforts to abstract away vendor specific volume logic, volume controller is not moved to ccm. instead ccm runs another controller called PersistentVolumeLabels controller. this controller is responsible for setting the zone and region labels on PersistentVolumes created in GCP and AWS clouds (QJenny is volumed controller still in or not? if in, who controls it?)
-  - the original plan to support volumes using CCM was to use Flex volumes to support pluggable volumes. However, a competing effort known as CSI is being planned to replace Flex. Considering these dynamics, we decided to have an intermediate stop gap measure until CSI becomes ready (QJenny)
+  - from 1.9, due to the complexity involved and due to the existing efforts to abstract away vendor specific volume logic, volume controller is not moved to ccm. instead ccm runs another controller called PersistentVolumeLabels controller. this controller is responsible for setting the zone and region labels on PersistentVolumes created in GCP and AWS clouds (UJenny is volumed controller still in or not? if in, who controls it?)
+  - the original plan to support volumes using CCM was to use Flex volumes to support pluggable volumes. However, a competing effort known as CSI is being planned to replace Flex. Considering these dynamics, we decided to have an intermediate stop gap measure until CSI becomes ready (UJenny)
 
 
 ### Functions of CCM
 #### 1. KCM
   - majority of ccm's functions are derived from the kcm
   - `node controller` is responsible for initializing a node by obtaining information about the nodes running in the cluster from the cloud provider. does the following functions
-    - intialize a node with cloud specific zone/region labels (QJenny I don't get the grammar. Labels?)
-    - initialize a node with cloud specific instance details, e. g, type and size (QJenny)
+    - intialize a node with cloud specific zone/region labels
+    - initialize a node with cloud specific instance details, e. g, type and size
     - obtain the node's network addresses and hostname
     - if a node becomes unresponsive, check the cloud to see if the node has been deleted form the cloud. if deleted, delete the k8s node object
-    - QJenny does kcm still run node controller?
   - `route controller` is responsible for configuring routes in the cloud appropriately so that containers on different nodes can communicate with each other. route controller is only applicable for Google Compute Engine clusters (QJenny nodes can communicate with each other??? why and how do they do that?)
-  - `service controller` is responsible for listening to service create, update and delete events. Based on the current state of services, it configures cloud load balancers (such as ELB(Elastic Load Balancing) or Google LB) to reflect the state of the services in k8s. (QJenny)
+  - `service controller` is responsible for listening to service create, update and delete events. Based on the current state of services, it configures cloud load balancers (such as ELB(Elastic Load Balancing) or Google LB) to reflect the state of the services in k8s.
   - `PersistentVolumeLabels controller` applies labels on AWS EBS(Amazon Web Services, Elastic Block Store)/GCE PD(Google Compute Engine Persistent Disk) volumes when they are created. removes the need for users to manually set the labels on these volumes.
-    - these labels are essential for the scheduling of pods as these volumes are constrained to work only within the region/zone that they are in. (pods need to be attached to volumes only in same region/zone - because otherwise they would be connected to remote network connection.) (QJenny - shudipta said if they are in different network - they should use NFS (network file system) volume type)
+    - these labels are essential for the scheduling of pods as these volumes are constrained to work only within the region/zone that they are in. (pods need to be attached to volumes only in same region/zone - because otherwise they would be connected to remote network connection.) (shudipta said if they are in different network - they should use NFS (network file system) volume type)
     - this controller was created for ccm. it was done to move the PV labelling logic in the k8s api server to the CCM (before it was an admission controller). it doesn't run on the KCM.
-    - QJenny - does KCM still run these controller also? does kcm run 'volume controller'?
 
 
 #### 2. Kubelet
-  - node controller contains the cloud-dependent functionality of the kubelet. before CCM, the kubelet was responsible for initializing a node with cloud-specific details such as IP addresses, region/zone labels and instance type information. (QJenny - instance type info?)
+  - node controller contains the cloud-dependent functionality of the kubelet. before CCM, the kubelet was responsible for initializing a node with cloud-specific details such as IP addresses, region/zone labels and instance type information
   - now, this initialization operation is moved to CCM
   - kubelet initializes a node without cloud-specific information.
-  - and adds a taint to the newly created node that makes the node unschedulable until the CCM initializes the node with cloud-specific information. kubelet then removes the taint. (QJenny - again. what's taint?)
+  - and adds a taint to the newly created node that makes the node unschedulable until the CCM initializes the node with cloud-specific information. kubelet then removes the taint. (UJenny - again. what's taint?)
 
 
 #### 3. K8s API server
@@ -836,16 +811,16 @@
 
 
 ### [Vendor Implementations](https://kubernetes.io/docs/concepts/architecture/cloud-controller/#vendor-implementations)
-  - cloud providers implement CCM to integrate with k8s - so that cluster can be hosted on these cloud providers? (QJenny)
+  - cloud providers implement CCM to integrate with k8s - so that cluster can be hosted on these cloud providers? (UJenny)
 
 
 ## Containers ([UJenny](https://kubernetes.io/docs/concepts/containers/images/))
 ### Updating Images
-  - default pull policy is `IfNotPresent` which causes the kubelet (QJenny - kubelet does this?) to skip pulling.
+  - default pull policy is `IfNotPresent` which causes the kubelet to skip pulling.
   - to always force a pull, one of these can be done
     - set the imagePullPolicy to `Always`
     - omit the imagePullPolicy and use `:latest` as tag (not best practice)
-    - omit imagePullPolicy and the tag for the image (QJenny - omit both???)
+    - omit imagePullPolicy and the tag for the image (UJenny - omit both? test)
     - enable the `AlwaysPullImages` admission controller ([UJenny](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#alwayspullimages))
 
 
@@ -874,15 +849,15 @@
   - pods provide two kinds of shared resources for their containers: networking and storage.
     - networking: each container in a pod shares the network namespace, including the IP address and network ports. they communicate with one another using `localhost`. (QJenny how???)
     - when containers in a pod communicate with entities outside the Pod, they must coordinate how they use the shared network resources (such as ports)
-    - storage: a pod can specify a set of shared storage volumes. All containers in the pod can access the shared volumes. Volumes also allow persistent data in a Pod to survive in case one of the containers within needs to be restarted. (QJenny)
-  - you'll rarely create individual pods directly (QJenny - but this can be done? what's an practice example?)
-  - pods can be created directly by me or indirectly by Controller (QJenny)
+    - storage: a pod can specify a set of shared storage volumes. All containers in the pod can access the shared volumes. Volumes also allow persistent data in a Pod to survive in case one of the containers within needs to be restarted
+  - you'll rarely create individual pods directly
+  - pods can be created directly by me or indirectly by Controller
   - pod remains in the scheduled Node until the process is terminated, pod object is deleted, pod is evicted for lack of resources or Node fails
   - the pod itself doesn't run, but it is an environment the containers run in and persists until it is deleted
   - pods don't self-heal. if a pod is scheduled to a node that fails or if scheduling operation itself fails, the pod is deleted. and pods don't survive evictiion due to lack of resources or Node maintenance
-  - k8s uses a higher-level abstraction, called a controller, that handles the work of managing the relatively disposable Pod instances. (QJenny)
+  - k8s uses a higher-level abstraction, called a controller, that handles the work of managing the relatively disposable Pod instances.
   - although it is possible to use Pod directly, it's far more common to manage pods using a Controller
-  - A controller can create and manage multiple pods, handling replication and rollout and providing self-healing capabilities at cluster scope. for example, if a Node fails, the controller might automatically replace the Pod by scheduling an identical replacement on a different Node (QJenny as the pod is being replaced, does that mean it will work from scratch? how about the shared volumes and data? will they be lost?)
+  - A controller can create and manage multiple pods, handling replication and rollout and providing self-healing capabilities at cluster scope. for example, if a Node fails, the controller might automatically replace the Pod by scheduling an identical replacement on a different Node
   - some examples of controller - deployment, StatefulSet, DaemonSet
   - pod templates are pod specifications which are included in other objects such as Replication Controllers, Jobs, DaemonSets.
   - controllers use pod templates to make actual pods.
@@ -905,31 +880,31 @@
   - changes to the template doesn't affect the pods already created
   - Similarly, pods created by a replication controller may subsequently be updated directly. this is in deliberate contrast to pods, which do specify the current desired state of all containers belonging to the pod. (after creating pods with controller, the pods can be updated separately with `kubectl edit pod <name>`. it will affect only the specific pod)
   - a pod models an application-specific "logical host". [before: same physical/virtual machine] = [now: same logical host]
-  - the shared context of a pod is a set of Linux namespaces, cgroups, and other aspects of isolation (same things that isolate Docker container) (QJenny: "shared context of a pod" - does that mean containers in a pod will share these?)
+  - the shared context of a pod is a set of Linux namespaces, cgroups, and other aspects of isolation (same things that isolate Docker container)
     - `cgroups` (control groups) is a Linux kernel feature that limits, accounts for and isolates the resource usage(CPU, memory, disk I/O, network etc) of a collection of processes.
-  - within a pod's context, the individual applications may have further sub-isolations applied. (QJenny: how?)
-  - as mentioned before, containers in same pod share an IP address and port space and can find each other via `localhost`. they can also communicate using standard inter-process communications like `SystemV semaphores` or `POSIX` shared memory. (QJenny: what?)
+  - within a pod's context, the individual applications may have further sub-isolations applied.
+  - as mentioned before, containers in same pod share an IP address and port space and can find each other via `localhost`. they can also communicate using standard inter-process communications like `SystemV semaphores` or `POSIX` shared memory. (UJenny: what?)
   - containers in different pods have distinct IP addresses and cannot communicate by IPC (interprocess communication) [without special configuration](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) (UJenny)
   - containers in different pods communicate usually with each other via pod ip addresses.
-  - applications within a pod also have access to shared volumes, which are defined as part of a pod and are made available to be mounted into each applicaion's filesystem. (QJenny mounted how?)
+  - applications within a pod also have access to shared volumes, which are defined as part of a pod and are made available to be mounted into each applicaion's filesystem.
   - pods are of "short life". after pods are created, they are assigned a unique ID (UID), scheduled to nodes where they remain until termination or deletion.
   - a pod is defined by UID
-  - If a node dies, pods are scheduled for deletion after a timeout period. they are not rescheduled, instead it is replaced by an identical pod, if desired with same name (QJenny) but with a new UID
+  - If a node dies, pods are scheduled for deletion after a timeout period. they are not rescheduled, instead it is replaced by an identical pod, if desired with same name but with a new UID
   - when something is said to have same lifetime as a pod, such as a volume, it exists as long as that specific pod (with that UID) exists. if the pod is deleted, volume is also destroyed. even if an identical pod is replaced, volume will be created anew.
-  - pods are unit of deployment, horizontal scaling, replication (QJenny - difference between horizontal scaling and replication?)
-  - colocation (coscheduling), shared fate(e.g, termination), coordinated replication (QJenny), resource sharing, dependency management are handled automatically in a pod
+  - pods are unit of deployment, horizontal scaling, replication
+  - colocation (coscheduling), shared fate(e.g, termination), coordinated replication, resource sharing, dependency management are handled automatically in a pod
   - applications in a pod must decide which one will use which port (one container is exposed in one port)
-  - each pod has an IP address in a flat shared networking space (QJenny) that can communicate with other physical machines and pods across the network
-  - the hostname is set to the pod's name for the application containers within the pod (QJenny)
+  - each pod has an IP address in a flat shared networking space that can communicate with other physical machines and pods across the network
+  - the hostname is set to the pod's name for the application containers within the pod
   - volumes enable data to survive container restarts and to be shared among the applicatiions within the pods
   - [uses of pods](https://kubernetes.io/docs/concepts/workloads/pods/pod/#uses-of-pods) UJenny
   - individual pods are not intended to run multiple instances of the same application
   - why not just run multiple programs in a single container?
     - transparency: helps the infrastructure to manage them, for example, process management and resoruce monitoring.
-    - decoupling software dependencies: they maybe be versioned, rebuilt, redeployed independently. k8s may even support live updates of individual containers someday. QJenny
+    - decoupling software dependencies: they maybe be versioned, rebuilt, redeployed independently. k8s may even support live updates of individual containers someday.
     - ease of use. users don't need to run their process managers (because infrastructure manages them?)
     - efficiency: infrastructure takes on more responsibility, containers can be light weight
-  - Why not support affinity-based co-scheduling of containers? That approach would provide co-location, but would not provide most of the benefits of pods, such as resource sharing, IPC, guaranteed fate sharing, and simplified management. QJenny
+  - Why not support affinity-based co-scheduling of containers? That approach would provide co-location, but would not provide most of the benefits of pods, such as resource sharing, IPC, guaranteed fate sharing, and simplified management. UJenny
   - controllers (such as deployement) provides self-healing, replication, rollout management wiht a cluster scope, that's why pods should use controllers, even for singletons
   - pod is exposed as a primitive in order to facilitate : [UJenny](https://kubernetes.io/docs/concepts/workloads/pods/pod/#durability-of-pods-or-lack-thereof)
   - as pods represent running processes on nodes in the cluster, it is important to allow those processes to gracefully terminate instead of being killed with a KILL signal
@@ -943,12 +918,12 @@
     - user sends commands to delete a pod with grace period of 30s
     - the pod in the API server is updated with the last-alive-time and grace period
     - `kubectl get pods` will show `Terminating` for the pod. when the kubelet sees the `Terminating` mark, it begins the process (the following subpoints happen simulaneously with this step)
-      - if the pod has defined a `preStop hook`, it is invoked inside of the pod.
-        - [`preStop`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2192) is called immediately before a container is terminated. it must complete before the call to delete the container can be sent. of type `Handler`
-      - if the `preStop` hook is still running after grace period expires, 2nd step again - API server is updated with 2 second of grace period again.
-      - the processes are sent TERM signal
-      - pod is removed from endpoints list for service, are no longer part of the set of running pods for replication controllers
-      - pods that shutdown slowly cannot continue to serve traffic as load balancers (like the service proxy) remove them from their rotations (QJenny)
+    - if the pod has defined a `preStop hook`, it is invoked inside of the pod.
+    - [`preStop`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2192) is called immediately before a container is terminated. it must complete before the call to delete the container can be sent. of type `Handler`
+    - if the `preStop` hook is still running after grace period expires, 2nd step again - API server is updated with 2 second of grace period again.
+    - the processes are sent TERM signal
+    - pod is removed from endpoints list for service, are no longer part of the set of running pods for replication controllers
+    - pods that shutdown slowly cannot continue to serve traffic as load balancers (like the service proxy) remove them from their rotations (UJenny)
     - when the grace perios expires, running processes are killed with SIGKILL
     - kubelet will finish deleting the pod on the API server by setting grace period to 0s (immediate deletion).
   - default grace period is 30s.
@@ -991,24 +966,24 @@
   - to perform a diagnostic, kubelet calls a Handler
   - [Probe struct](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1932) - Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.
     - `Handler` The action taken to determine the health of a container. 3 types of handlers-
-      - [`ExecAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1920:6) Executes a specified command inside the Container. The diagnostic is considered successful if the command exits with a status code of 0. takes a command as an element of this struct
-      - [`TCPSocketAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1909:6)  Performs a TCP check against the Container’s IP address on a specified port. The diagnostic is considered successful if the port is open. takes the port as element. takes host name to connect to, default to pod ip. (QJenny - host name???)
-      - [`HTTPGetAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1877:6) Performs an HTTP Get request against the Container’s IP address on a specified port and path. The diagnostic is considered successful if the response has a status code greater than or equal to 200 and less than 400. takes path, port, host (default to pod ip) as element of this struct
+    - [`ExecAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1920:6) Executes a specified command inside the Container. The diagnostic is considered successful if the command exits with a status code of 0. takes a command as an element of this struct
+    - [`TCPSocketAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1909:6)  Performs a TCP check against the Container’s IP address on a specified port. The diagnostic is considered successful if the port is open. takes the port as element. takes host name to connect to, default to pod ip. (UJenny - host name???)
+    - [`HTTPGetAction`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L1877:6) Performs an HTTP Get request against the Container’s IP address on a specified port and path. The diagnostic is considered successful if the response has a status code greater than or equal to 200 and less than 400. takes path, port, host (default to pod ip) as element of this struct
     - `InitialDelaySeconds` of type `int32` - Number of seconds after the container has started before liveness probes are initiated.
   - each probe has one of three results:
     - success: the container passed the diagnostic
     - failure: failed the diagnostic
     - unknown: the diagnostic itself failed, so no action should be taken
-  - the kubelet can optionally (QJenny) perform and react to two kinds of probes on running containers:
-    - [`livenessProbe`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2095) Indicates whether the Container is running. If the liveness probe fails, the kubelet kills the Container, and the Container is subjected to its restart policy. If a Container does not provide a liveness probe, the default state is Success. (QJenny what does it mean by "doesn't provide liveness probe"?)
-    - [`readinessProbe`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2106) Indicates whether the Container is ready to service requests. If the readiness probe fails, the endpoints controller (QJenny there's a endpoints controller?) removes the Pod’s IP address from the endpoints of all Services that match the Pod. The default state of readiness before the initial delay is Failure. If a Container does not provide a readiness probe, the default state is Success.
+  - the kubelet can optionally perform and react to two kinds of probes on running containers:
+    - [`livenessProbe`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2095) Indicates whether the Container is running. If the liveness probe fails, the kubelet kills the Container, and the Container is subjected to its restart policy. If a Container does not provide a liveness probe, the default state is Success. (UJenny what does it mean by "doesn't provide liveness probe"?)
+    - [`readinessProbe`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2106) Indicates whether the Container is ready to service requests. If the readiness probe fails, the endpoints controller (UJenny there's a endpoints controller?) removes the Pod’s IP address from the endpoints of all Services that match the Pod. The default state of readiness before the initial delay is Failure. If a Container does not provide a readiness probe, the default state is Success.
   - when should we use which probe?
     - if process in container is able to crash on its own whenever it becomes unhealthy - probes aren't needed - kubelet will take care of it with pod's `restartPolicy`
     - if container needs to be killed and restarted if a probe failt - liveness probe + restartPolicy of Always or OnFailure
     - if container needs to send traffic only when a probe succeeds - readiness probe. in previous case, readiness or liveness if fine. but readiness in the spec means that the pod will start without receiving any traffic and starts receiving traffic only after readiness probe starts succeeding
-    - if container works on loading large data, configuration files or migrations during startup - readiness (QJenny why?)
-    - If you want your Container to be able to take itself down for maintenance, you can specify a readiness probe that checks an endpoint specific to readiness that is different from the liveness probe. QJenny
-    - if you want to avoid requests when pod is deleted, no need of readiness probe. on deletion, pod automatically put itself into an unready state, remains in that state while it waits for the containers to stop (QJenny then what happens?)
+    - if container works on loading large data, configuration files or migrations during startup - readiness (UJenny why?)
+    - If you want your Container to be able to take itself down for maintenance, you can specify a readiness probe that checks an endpoint specific to readiness that is different from the liveness probe. UJenny
+    - if you want to avoid requests when pod is deleted, no need of readiness probe. on deletion, pod automatically put itself into an unready state, remains in that state while it waits for the containers to stop (UJenny then what happens?)
   - PodStatus has a member - a list of [`ContainerStatus`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2270) UJenny
   - PodSpec has a new member from v1.11 - [`ReadinessGate`](https://github.com/kubernetes/api/blob/kubernetes-1.12.0/core/v1/types.go#L2880) - If specified, all readiness gates will be evaluated for pod readiness. A pod is ready when all its containers are ready AND all conditions specified in the readiness gates have status equal to "True". +optional. contains a list of PodConditionType
 
@@ -1036,7 +1011,7 @@ status:
 
 to be ready, all the containers of the pod must be ready and readiness gates must be true. mentional the conditions in readinessGates and if that condition doesn't exist in status.conditions - it will be considered false.
 
-The new Pod conditions must comply with Kubernetes label key format. Since the kubectl patch command still doesn’t support patching object status, the new Pod conditions have to be injected through the PATCH action using one of the KubeClient libraries. (QJenny, https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-readiness-gate)
+The new Pod conditions must comply with Kubernetes label key format. Since the kubectl patch command still doesn’t support patching object status, the new Pod conditions have to be injected through the PATCH action using one of the KubeClient libraries. (UJenny, https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-readiness-gate)
 
 
 restartPolicy of a pod means restart of all containers of the pod. UJenny https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
@@ -1046,9 +1021,8 @@ Pods with a phase of Succeeded or Failed for more than some duration (determined
 
 3 types of controllers are available -
     1. job - for pods that expected to terminate- with restartpolicy onFailure or never (ex. batch computations)
-    2.  ReplicationController, ReplicaSet, or Deployment - for Pods that are not expected to terminate, for example, web servers. restartpolicy always
+    2. ReplicationController, ReplicaSet, or Deployment - for Pods that are not expected to terminate, for example, web servers. restartpolicy always
     3. Use a DaemonSet for Pods that need to run one per machine, because they provide a machine-specific system service.
-QJenny
 
 
 If a node dies or is disconnected from the rest of the cluster, Kubernetes applies a policy for setting the phase of all Pods on the lost node to Failed.
@@ -1184,7 +1158,7 @@ https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
 - deployment + rollout is recommended"
 - if the labels of the replicaset is empty, it is defaulted to the pods it manages
 - `replicas` default to 1
-- `containers.ports` lists the ports to expose FROM THE CONTAINER. keeping it empty doesn't prevent a port to be exposed. so in our book app, we exposed 4321. we could leave this field. QJenny - if we didn't expose the port in Dockerfile, would exposing the port in this field make it work???
+- `containers.ports` lists the ports to expose FROM THE CONTAINER. keeping it empty doesn't prevent a port to be exposed. so in our book app, we exposed 4321. we could leave this field. UJenny - if we didn't expose the port in Dockerfile, would exposing the port in this field make it work???
 - `containers.command` overwrites entrypoint of docker image.
 - `resources` cpu, memory, storage, ephemeral-storage
 - after pods are created, changing `containers.env` didn't change pods `containers.env`. but through deployment, it did.
@@ -1206,7 +1180,7 @@ https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
 
 
 ### Horizontal Pod Autoscaler
-QJenny https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#replicaset-as-an-horizontal-pod-autoscaler-target
+UJenny https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#replicaset-as-an-horizontal-pod-autoscaler-target
 
 
 ## ReplicationController
@@ -1226,10 +1200,10 @@ QJenny https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#rep
 - `kubectl rollout status deploy <name>`
 - `kubectl get pods --show-labels`
 - deployment creates pods and automatically make labels with `pod-template-hash-value`
-- replicaset name = deploy-name + pod-template-hash-value (QJenny - k8s said this should match, in my pc, doesn't match)
+- replicaset name = deploy-name + pod-template-hash-value (UJenny - k8s said this should match, in my pc, doesn't match)
 - don't change pod-template-hash label (it is generated by hashing PodTemplate)
 - deleting a deploy, deletes the corresponding replicaset
-- updating podTemplate of a deploy, creates a new replicaset, but don't destroy the old one - just makes replicas = 0 (QJenny something to do with `deploymentspec.revisionHistory`? to rollback?)
+- updating podTemplate of a deploy, creates a new replicaset, but don't destroy the old one - just makes replicas = 0
 - `deploymentspec.revisionHistoryLimit` number of old replicasets to allow rollback - defaults to 10. if 0, all replicaset with 0 replica will be deleted
 ```
 spec:
@@ -1280,7 +1254,7 @@ REVISION  CHANGE-CAUSE
 
 
 `kubectl scale deploy <name> --replicas=10`
-`kubectl autoscale deploy <name> --min=10 --max=15 --cpu-percent=80` based on cpu utilization of your existing pods (this command auto-changes replicas in live-config of deploy, creates a `hpa` object)           //QJenny cpu utilization?
+`kubectl autoscale deploy <name> --min=10 --max=15 --cpu-percent=80` based on cpu utilization of your existing pods (this command auto-changes replicas in live-config of deploy, creates a `hpa` object)           //UJenny cpu utilization?
 
 
 
@@ -1336,7 +1310,7 @@ failed rollouts don't enter into `rollout history`
 - ordered and automated rolling updates
 - limitations: need to create a headless service, PersistentVolume provisioner, deleting/scaling doesn't delete the volumes (for data safety)
 - `serviceName` is the service that govern the statefulset. it must exist before the statefulset. responsible for network identity of the set
-- pods has dns/hostname like : `pod-specific-string.serviceName.default.svc.cluster.local`, `pod-specific-string` is managed by statefulset controller. `cluster.local` is the cluster-domain (QJenny)
+- pods has dns/hostname like : `pod-specific-string.serviceName.default.svc.cluster.local`, `pod-specific-string` is managed by statefulset controller. `cluster.local` is the cluster-domain
 - like deployment, gotta mention `spec.selector`
 
 
@@ -1354,7 +1328,7 @@ failed rollouts don't enter into `rollout history`
 - now each pod gets its matching dns subdomain as `podname.service-domain`
 - another example of pod dns : `web-0.nginx.jennyns.svc.kube.local`
 - statefulset adds a label to each pod - `statefulset.kubernetes.io/pod-name` (helps to attach service)
-- there's another label i can see - `controller-revision-hash` QJenny
+- there's another label i can see - `controller-revision-hash` UJenny
 
 - pods are created 0 to n-1, deleted n-1 to 0
 - after web-1 is created, if web-0 is failed, web-2 won't be launched before web-0 is relaunched
@@ -1499,7 +1473,7 @@ subsets:
 - when controlling pods, `ip` contains all pod-ip's and `port` contains all the exposed port from the containers in a pod. so. cartesian product, right?
 
 - `10.0.2.2` gets the host machine from the VM. we can access this ip inside the cluster (as pod-ip)
-- ran a go server (which is running on localhost:8080 in my pc), now enterd `minikube ssh` and accesses this go server by `10.0.2.2` - how does this work? where do we get this ip? QJenny
+- ran a go server (which is running on localhost:8080 in my pc), now enterd `minikube ssh` and accesses this go server by `10.0.2.2` - how does this work? where do we get this ip?
 
 - endpoint live-config file for previous service example
 ```
@@ -1550,12 +1524,12 @@ subsets:
 - `proxy-mode:ipvs` [ipvs](https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-ipvs) not just round-robin. has least connection, destination hashing, source hashing, shortest expected delay, never queue
 
 - with any proxy-model, any traffic is routed from service-ip:port to backend without client knowing anything about k8s/service/pods.
-- `spec.SessionAffinity` can be clientIP or None. default is none. QJenny what's this?
-- `spec.sessionAffinityConfig.clientIP.timeoutSeconds` is 10800 (3 hours) by default if sessionAffinity is clientIP. QJenny
+- `spec.SessionAffinity` can be clientIP or None. default is none. UJenny what's this?
+- `spec.sessionAffinityConfig.clientIP.timeoutSeconds` is 10800 (3 hours) by default if sessionAffinity is clientIP. UJenny
 
 
 - must be within `service-cluster-ip-range`. apiserver return 442 if it is invalid
-- why not round-robin dns? https://kubernetes.io/docs/concepts/services-networking/service/#why-not-use-round-robin-dns QJenny
+- why not round-robin dns? https://kubernetes.io/docs/concepts/services-networking/service/#why-not-use-round-robin-dns UJenny
 
 
 - discovers services in 2 ways - env and dns
@@ -1589,15 +1563,15 @@ subsets:
 
 
 
-- QJenny ExternalName https://kubernetes.io/docs/concepts/services-networking/service/#externalname
-- QJenny ExternalIP https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
-- QJenny can I test externalIP with my localhost/realip? do I put ip of the master node here in real life?
-- QJenny we never hit an address with any port. does that mean they always listen to port 80?
+- UJenny ExternalName https://kubernetes.io/docs/concepts/services-networking/service/#externalname
+- UJenny ExternalIP https://kubernetes.io/docs/concepts/services-networking/service/#external-ips
+- UJenny can I test externalIP with my localhost/realip? do I put ip of the master node here in real life?
+- UJenny we never hit an address with any port. does that mean they always listen to port 80?
 
 
-- QJenny https://kubernetes.io/docs/concepts/services-networking/service/#shortcomings
+- UJenny https://kubernetes.io/docs/concepts/services-networking/service/#shortcomings
 
-- QJenny ip-vip, userspace-iptables-ipvs https://kubernetes.io/docs/concepts/services-networking/service/#the-gory-details-of-virtual-ips
+- UJenny ip-vip, userspace-iptables-ipvs https://kubernetes.io/docs/concepts/services-networking/service/#the-gory-details-of-virtual-ips
 
 
 
@@ -1608,7 +1582,7 @@ subsets:
 - kubedns server return A record
 - a pod in `foo` namespace will lookup `svc1` by `svc1` and a pod in another ns will look up this by `svc.foo`
 - A record: normal (not headless) services are assigned DNS A record for a name (resolves to `ClusterIP`). headless services are also assigned similarly `svcname.ns.svc.cluster.local`, but resolves to set of IPs of the pods. (enter a pod and use `nslookup` to check services. you'll get one ip for normal service and multiple ip's for headless service) clients have to consume the set or select using round robin
-- SRV record: for normal service, `_port-name._protocol.myservice.ns.svc.cluster.local` would resolve into port number and domain name `myservice.ns.svc.cluster.local` and for headless service, it would resolve into (for each pod) port number and pod domain `auto-generated-name-for-pod.myservice.ns.svc.cluster.local` QJenny
+- SRV record: for normal service, `_port-name._protocol.myservice.ns.svc.cluster.local` would resolve into port number and domain name `myservice.ns.svc.cluster.local` and for headless service, it would resolve into (for each pod) port number and pod domain `auto-generated-name-for-pod.myservice.ns.svc.cluster.local` UJenny
 
 - pod domain: `pod-ip-address.ns.pod.cluster.local` 1.2.3.4 would get DNS A record `1-2-3-4.default.pod.cluster.local` (with port 80)
 - you can't change any field in the pod spec other than image/activeDeadlineSeconds/tolerations
@@ -1994,6 +1968,13 @@ beta.kubernetes.io/arch
 - pod references the secret in 2 ways - volume or by kubelet when pulling images for the pod QJenny
 - service account automatically create and attach secrets with API https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ UJenny
 
+
+
+
+
+
+## etcd
+- minikube has a `etcd-minikube` pod where it keeps all the info. UJenny https://coreos.com/etcd/docs/latest/dev-guide/interacting_v3.html
 
 
 

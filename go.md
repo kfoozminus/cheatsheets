@@ -429,6 +429,9 @@ if uppercase - it can be exported outside of package
 - if you want to run 1000 request by creating thread - each one takes 1MB - so total 1GB (like Apache server)
 
 
+var _ I = &T{}  //checks if type T implements I, if not, it will be caught in compile time
+
+
 TODO: go get
 
 GC: https://blog.twitch.tv/gos-march-to-low-latency-gc-a6fa96f06eb7
