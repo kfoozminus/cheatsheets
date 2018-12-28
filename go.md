@@ -426,8 +426,7 @@ if uppercase - it can be exported outside of package
     - huge latency between inter-thread communication, goroutines use channels to communicate with other goroutine QJenny
     - threads have tid, goroutines doesn't have any id because go doesn't have thread local storage ([TLS](https://docs.microsoft.com/en-us/windows/desktop/ProcThread/thread-local-storage))
     - threads are scheduled preemptively, switching cost is high as scheduler needs to save 50 states and registers. goroutines are non-preemptive (cooperative) which saves only 3 registers
-    - 
-
+- if you want to run 1000 request by creating thread - each one takes 1MB - so total 1GB (like Apache server)
 
 
 TODO: go get
