@@ -421,12 +421,15 @@ if uppercase - it can be exported outside of package
 - go has a `M:N` scheduler - schedules M goroutines among N os threads with GOMAXPROCS number of processors. normally, only one thread runs (in one core). when gomaxprocs is 1, go scheduler gives the upper hand to one goroutine then another, until all are finished
 - there's a chart of differences between thread and goroutine. READ IT!
     - thread managed by kernel, has hardware dependency. goroutines by go runtime, doesn't have hardware dependency
-    - threads have stack of 1-2MB, goroutines have 8KB
-    - stack cannot grow, can grow upto 1GB
+    - threads have stack of 1-2MB. goroutines have 8KB
+    - stack cannot grow. can grow upto 1GB
     - huge latency between inter-thread communication, goroutines use channels to communicate with other goroutine QJenny
     - threads have tid, goroutines doesn't have any id because go doesn't have thread local storage ([TLS](https://docs.microsoft.com/en-us/windows/desktop/ProcThread/thread-local-storage))
     - threads are scheduled preemptively, switching cost is high as scheduler needs to save 50 states and registers. goroutines are non-preemptive (cooperative) which saves only 3 registers
 - if you want to run 1000 request by creating thread - each one takes 1MB - so total 1GB (like Apache server)
+- you can create 1000 goroutines, because of the dynamic stack memory - 8KB by default, can grow upto 1GB.
+- rapid switching is possible in goroutines
+- if one goroutine is blocked (sleeping, network input, channel operation, blocking on primitives in the sync package) in a thread, another goroutine is scheduled in it's place
 
 
 var _ I = &T{}  //checks if type T implements I, if not, it will be caught in compile time
