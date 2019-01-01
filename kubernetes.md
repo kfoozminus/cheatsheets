@@ -1276,6 +1276,7 @@ REVISION  CHANGE-CAUSE
 
 `kubectl patch deploy booklist4 -p '{"spec":{"replicas":17}}'` patch command by json
 `kubectl patch deploy booklist4 -p $'spec:\n replicas: 18'` patch by yaml
+`kubectl patch deploy booklist4 -p $(cat patch.yaml)`
 
 `rollout pause` will pause a deploy in middle of a rollout, and will stop counting against `progressDeadline`. status.conditions.type = `Progressing` will have status `unknown` in middle of pause + rollout. but it will continue to "work" and create/terminate pods. status is `False` if progress failed
 
@@ -1975,6 +1976,32 @@ beta.kubernetes.io/arch
 
 ## etcd
 - minikube has a `etcd-minikube` pod where it keeps all the info. UJenny https://coreos.com/etcd/docs/latest/dev-guide/interacting_v3.html
+
+
+
+## Patch Options
+- https://kubernetes.io/docs/tasks/run-application/update-api-object-kubectl-patch/#use-a-json-merge-patch-to-update-a-deployment
+- https://erosb.github.io/post/json-patch-vs-merge-patch/
+- https://kubernetes.io/docs/reference/kubectl/cheatsheet/#patching-resources
+- 3 types
+- strategic merge patch - `kubectl patch deploy <name> --patch "$(cat patch.yaml)"`
+    - depends on the patchStrategy in the k8s code
+    - can be `merge`, `retainKeys`, `replace` (QJenny what is retainKeys? volume has merge,retainKeys both)
+    - if not specified, default is `replace`
+    - this method is default to kubectl patch. so `--type strategic` can be ommitted.
+    - if you add a container, new one will be added in `containers[0]`
+- json merge patch: `--type merge`
+    - partial elements are passed - those are replaced
+    - `kubectl patch deploy booklist4 --type merge -p "$(cat patch.yaml)"`
+    - you can also do `$(cat patch.json)`
+    - completely replaces existing list
+    - deletion is by `null` (from [here](https://erosb.github.io/post/json-patch-vs-merge-patch/))
+    - so it's not possible to change a value to null, by json patch - it is possible
+    - if you want to change a array/slice like containers, you have to mention the full list - as it replaces the whole
+- json patch - above link + https://json8.github.io/patch/demos/apply/
+    - json patch has add, remove, replace, move, copy
+    - `kubectl patch pod valid-pod --type='json' -p='[{"op": "replace", "path": "/spec/containers/0/image", "value":"new image"}]'`
+    - (admission webhook use only this kinda patch, others don't work in here)
 
 
 
