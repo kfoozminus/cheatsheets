@@ -2005,6 +2005,23 @@ beta.kubernetes.io/arch
 
 
 
+## when you should use configMap or custom resources
+- https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#should-i-use-a-configmap-or-a-custom-resource
+
+
+## CRD
+- https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
+- aggregated API sits behind primary API
+- https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/
+- you can create custom resources in 2 ways - crd (under k8s api) or programming aggregation api
+- use crd if your company uses that for small open-source project
+- crd common features - https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#common-features
+- uses authN, authZ, auditing
+- finalizers like can be removed after `metadata.deletionTimestamp` is set
+- UJenny: validation https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#validation
+
+
+
 
 
 # To Gutaguti
