@@ -2019,6 +2019,20 @@ beta.kubernetes.io/arch
 - uses authN, authZ, auditing
 - finalizers like can be removed after `metadata.deletionTimestamp` is set
 - UJenny: validation https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#validation
+- `crd.spec.names.singular` defaults to lowercase of `kind`
+- `scope` has `Cluster` or `Namespace`
+- plural/singular must be lowercase
+- Operator, etcd cluster, etcd operator - https://coreos.com/blog/introducing-operators.html
+
+
+## Code Generator
+- https://blog.openshift.com/kubernetes-deep-dive-code-generation-customresources/
+- some code generators for building controllers
+- deepcopy-gen creates deepcopy method for every tyep
+- client-gen creates typed clientsets for customresources
+- informer-gen creates informers for customresources which offer event based interface to react on changes of cr on the server
+- lister-gen creates listers for cr which offer read-only caching layer for GET and LIST requests
+- generated code either goes to same directory as input files or pkg/client
 
 
 
