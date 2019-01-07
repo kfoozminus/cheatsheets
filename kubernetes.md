@@ -2019,8 +2019,11 @@ beta.kubernetes.io/arch
 - uses authN, authZ, auditing
 - finalizers like can be removed after `metadata.deletionTimestamp` is set
 - UJenny: validation https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#validation
+- `apiVersion` is `apiextensions.k8s.io/v1beta1`
+- `metadata.name` must be `plural.group`
 - `crd.spec.names.singular` defaults to lowercase of `kind`
 - `scope` has `Cluster` or `Namespace`
+- `listKind` is like `JennyList` (kind is `Jenny`)
 - plural/singular must be lowercase
 - Operator, etcd cluster, etcd operator - https://coreos.com/blog/introducing-operators.html
 
@@ -2032,7 +2035,53 @@ beta.kubernetes.io/arch
 - client-gen creates typed clientsets for customresources
 - informer-gen creates informers for customresources which offer event based interface to react on changes of cr on the server
 - lister-gen creates listers for cr which offer read-only caching layer for GET and LIST requests
-- generated code either goes to same directory as input files or pkg/client
+- generated code either goes to same directory as input files(deepcoy-gen) or pkg/client (client-, informer-, lister-gen)
+
+
+- global tags are in directly above /pkg/apis/<apigroup>/<version>/doc.go
+- local tags are in directly above types
+- others must be separated from types or doc.go with at least one empty line
+- `// +k8s:deepcopy-gen=package,register` - you don't write `register` here after v1.8
+- `// +groupName=example.com` must be just above the package name
+- if you want a type to not be deepcopied - you will write `// +k8s:deepcopy-gen=false` above that type, above `true` if you didn't mention `package` in global tag
+
+
+- crds must have to implement `runtime.Object interface`, which has `DeepCopyObject` method - https://github.com/kubernetes/apimachinery/blob/7089aafd1ef57551192f6ec14c5ed1f49494ccd2/pkg/runtime/interfaces.go#L237
+- `// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object` above every top-level API types will implement `runtime.Object interface` by writing DeepCopyObject() method
+- those who have metav1.TypeMeta embedded are top-level API types
+- `// +k8s:deepcopy-gen:interfaces=example.com/pkg/apis/example.SomeInterface` will also generate `DeepCopySomeInterface() SomeInterface` if the object has that interface as field (QJenny if a struct has an interface as a field?)
+- `// +genclient` creates a client for this type. should not use in list type. QJenny why?
+- `// +genclient:noStatus` says the resulting client will not have `UpdateStatus` method
+- `// +genclient:nonNamespaced` for cluster wide resources
+```
+// +genclient:noVerbs
+// +genclient:onlyVerbs=create,delete
+// +genclient:skipVerbs=get,list,create,update,patch,delete,deleteCollection,watch
+// +genclient:method=Create,verb=create,result=k8s.io/apimachinery/pkg/apis/meta/v1.Status
+```
+- the last one will be create-only and will not return the API type itself, but a metav1.Status
+
+
+### [openshift crd repo](https://github.com/openshift-evangelists/crd-code-generation)
+
+- deepcopy-gen https://github.com/kubernetes/gengo/blob/master/examples/deepcopy-gen/main.go
+- client-gen https://github.com/kubernetes/community/blob/master/contributors/devel/generating-clientset.md
+- list-, informer-gen https://github.com/kubernetes/code-generator/blob/master/generate-groups.sh (yeah that's right :v)
+
+
+### how to write crd
+- create a directory like
+```
+root
+  artifacts
+    *.yaml
+  pkg
+    apis
+      types.go
+      doc.go
+      register.go
+    client
+```
 
 
 
