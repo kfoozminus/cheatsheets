@@ -58,7 +58,7 @@ Go exports a variable if a variable name starts with Uppercase. All other variab
 
 When you import a package, Go creates a global variable using package declaration of the package. In above case, greet is the global variable created by Go because we used package greet declaration in programs contained in greet package.	//medium "packages in go"
 
-So, In *.go -  'import ""' should have the package directory, and if the package files contains "package x", then the *.go should write x.__ for importing function/variables. the global variable of the imported package is - x
+So, In <>.go -  'import ""' should have the package directory, and if the package files contains "package x", then the <>.go should write x.<> for importing function/variables. the global variable of the imported package is - x
 
 
 Generally, when you install a 3rd party package, Go compiles the package and create package archive file. If you have written package locally, then your IDE might create package archive as soon as you save the file in the package or when package gets modified.
@@ -405,7 +405,7 @@ if uppercase - it can be exported outside of package
 - go recommends using goroutines on one core, but we can modify to run in different cores
 - when a program is sent to OS - a process has a primary thread, which creates other threads. when primary thread is done, the process exits
 - process is a container that has compiled code, memory, OS resources, which is provided to threads. a process is a program in the memory
-- thread is a lightwright process inside a process. actual executor of a piece of code.
+- thread is a lightweight process inside a process. actual executor of a piece of code.
 - thread store variables in memory, called stack, fixed size of 1-2 MB. not shared with other threads
 - process has heaps - shared memory among all threads of that process
 - start a browser (program) - it will divide into different process like opening another tab - one process will open different threads like downloading, listening to music, browsing

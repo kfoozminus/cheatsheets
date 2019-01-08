@@ -2,6 +2,7 @@
   - Installed kubectl binary using curl: https://kubernetes.io/docs/tasks/tools/install-kubectl/
   - Have secure boot disabled and virtualization enabled from bios
   - Installed virtualBox and minikube: https://kubernetes.io/docs/tasks/tools/install-minikube/
+  - Installed kubectl completion for fish shell: https://github.com/evanlucas/fish-kubectl-completions
 
 
 
@@ -2082,9 +2083,16 @@ root
       register.go
     client
 ```
+- Wrangling Kubernetes API internals: https://skillsmatter.com/skillscasts/10599-wrangling-kubernetes-api-internals#video
+- Extending the Kubernetes API: What the Docs Don't Tell You [I] - James Munnelly, Jetstack: https://www.youtube.com/watch?v=PYLFZVv68lM
 
 
+- client-, conversion-, deepcopy-, defaulter-, go-to-protobuf, informer-, lister-, openapi-, codec-
 
+- `types.go` outside `apigroup/version` works as intermediate something when conversioning versions/upgrading apiservers. this is called internal type/version. others are external versions. ex. - v1 to internal to v2
+
+
+## Writing Controllers
 
 
 # To Gutaguti
