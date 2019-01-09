@@ -432,6 +432,20 @@ if uppercase - it can be exported outside of package
 - if one goroutine is blocked (sleeping, network input, channel operation, blocking on primitives in the sync package) in a thread, another goroutine is scheduled in it's place
 
 
+## Goroutines
+- goroutines are annonymous, as they don't have any identity
+
+## Channel
+- channel can pass data of only one data type
+- zero-value of channel is nil
+- channels by default are pointers
+- like time.Sleep, channgel operations are blocking by deafult
+- Deadlock: if channel is blocking a goroutine but no other goroutine is available to take control
+- <- ch is blocking in the sense that it doesn't have a value avaialble with it and some other goroutine might push a value. ch <- is blocking in the sense that data is sent to the channgel and some other goroutine might read it
+- QJenny example 101
+- whenever blocking happens, Go scheduler block "this" goroutine and activates another
+
+
 var _ I = &T{}  //checks if type T implements I, if not, it will be caught in compile time
 
 
