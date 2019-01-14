@@ -224,6 +224,12 @@ git config --global alias.st status	//type "git st" for "git status"
 
 
 
+git clean               //clean all 'add'ed local changes
+git remote set-url origin <new-ssh>     //changes remote link
+
+
+
+
 
 
 
