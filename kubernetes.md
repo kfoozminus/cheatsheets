@@ -1964,6 +1964,19 @@ beta.kubernetes.io/arch
 - `node-restriction.kubernetes.io/` - https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-isolation-restriction
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Secrets
 - used to hold password, OAuth tokens, ssh
 - user and system both can create secret
