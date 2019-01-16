@@ -26,3 +26,10 @@ Sort strings in a file
 ```
 sort < in > out
 ```
+
+Cut - remove sections from each line of file
+```
+cut -f 2- -d ":"
+```
+-d = delimiter
+divides the line in fields by ":", then removes until 2nd field
