@@ -33,3 +33,11 @@ cut -f 2- -d ":"
 ```
 -d = delimiter
 divides the line in fields by ":", then removes until 2nd field
+
+
+
+```
+cat a | grep "^jenny"
+cat a | grep "jenny$"
+```
+finds the lines which start and end with jenny

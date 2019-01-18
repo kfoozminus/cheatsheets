@@ -1896,7 +1896,7 @@ spec:
 
 
 
-## Config
+## Config Best Practices
 - group related objects in same file
 - `kubectl create -f /dir`
 - don't write default values unnecessarily
@@ -1963,114 +1963,6 @@ beta.kubernetes.io/arch
 
 - `node-restriction.kubernetes.io/` - https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-isolation-restriction
 
-
-
-## Accessing the API from a pod
-
-- https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
-- `/var/run/secrets/kubernetes.io/serviceaccount/` in a pod has ca.crt, token, namespace
-
-## Accessing services running
-
-- https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-services-running-on-the-cluster
-- `kubectl cluster-info`, `kubectl cluster-info dump`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Secrets
-- used to hold password, OAuth tokens, ssh
-- user and system both can create secret
-- pod references the secret in 2 ways - volume or by kubelet when pulling images for the pod QJenny
-- service account automatically create and attach secrets with API https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ UJenny
-- `kubectl create secret generic <name> --from-file=username.txt --from-file=password.txt` = a secret with type `Opaque`
-- `--from-file` automatically encodes the data
-- `echo -n "jenny" | base64` to encode
-- `echo -n <encoded> | base64 -d` to decode
-- you cannot put non-encoded data in `.data` field in .yaml file
-- you CAN in `.stringData` field
-```
-stringData:
-  password: 1234
-```
-gave error, `1234` was assumed as int. just wrap with ""
-- stringData will be automatically encoded to base64
-```
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mysecret
-type: Opaque
-stringData:
-  config.yaml: |-
-    apiUrl: "https://my.api.com/api/v1"
-    username: {{username}}
-    password: {{password}}
-```
-
-- a field in stringData overwrites same field in data
-- The keys of data and stringData must consist of alphanumeric characters, ‘-’, ‘\_’ or ‘.’.
--
-```
-spec:
-  containers:
-  - name: mypod
-    image: redis
-    volumeMounts:
-    - name: foo
-      mountPath: "/etc/foo"
-      readOnly: true
-  volumes:
-  - name: foo
-    secret:
-      secretName: mysecret
-      items:
-      - key: username
-        path: my-group/my-username
-```
-- inside pod, secrets will be saved as non-encoded
-- if `.items` is specified, only specified keys will be mounted to specified path (and filename - so username will be saved in `my-username` file)
-- default permission to files is 0644, but can be modified by `.volume.secret.defaultMode` - but have to use decimal number as json/yaml doesn't support octal notation. so for 0400, you have to use 256
-- `.volume.secret.items.mode` can set permission to separate files
-- QJenny file permissin don't match inside the pod
-- updates secrets and configmaps after every periodin sync, using the `ConfigMapAndSecretChangeDetectionStrategy` field in `kubeletConfiguration` in `kubernetes/staging/src/k8s.io/kubelet/config/v1beta1/types.go`
-- total time is kubelet sync period + cache propagation delay
-- subPath doesn't receive secret updates
-- can also get env
-```
-spec:
-  containers:
-  - name: mycontainer
-    image: redis
-    env:
-      - name: SECRET_USERNAME
-        valueFrom:
-          secretKeyRef:
-            name: mysecret
-            key: username
-      - name: SECRET_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            name: mysecret
-            key: password
-```
-- UJenny imagePullRegistry, private image
-- When deploying applications that interact with the secrets API, access should be limited using authorization policies such as RBAC.
-- The ability to watch and list all secrets in a cluster should be reserved for only the most privileged, system-level components.
-- On most Kubernetes-project-maintained distributions, communication between user to the apiserver, and from apiserver to the kubelets, is protected by SSL/TLS. Secrets are protected when transmitted over these channels.
-- In the API server secret data is stored as plaintext in etcd
-- anyone with root on any node can read any secret from the apiserver, by impersonating the kubelet.
 
 
 
@@ -2197,6 +2089,249 @@ root
 
 
 ## Writing Controllers
+
+
+
+
+
+
+## Accessing the API from a pod
+
+- https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
+- `/var/run/secrets/kubernetes.io/serviceaccount/` in a pod has ca.crt, token, namespace
+
+## Accessing services running
+
+- https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-services-running-on-the-cluster
+- `kubectl cluster-info`, `kubectl cluster-info dump`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Secrets
+- used to hold password, OAuth tokens, ssh
+- user and system both can create secret
+- pod references the secret in 2 ways - volume or by kubelet when pulling images for the pod QJenny
+- service account automatically create and attach secrets with API https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/ UJenny
+- `kubectl create secret generic <name> --from-file=username.txt --from-file=password.txt` = a secret with type `Opaque`
+- `--from-file` automatically encodes the data
+- `echo -n "jenny" | base64` to encode
+- `echo -n <encoded> | base64 -d` to decode
+- you cannot put non-encoded data in `.data` field in .yaml file
+- you CAN in `.stringData` field
+```
+stringData:
+  password: 1234
+```
+gave error, `1234` was assumed as int. just wrap with ""
+- stringData will be automatically encoded to base64
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+stringData:
+  config.yaml: |-
+    apiUrl: "https://my.api.com/api/v1"
+    username: {{username}}
+    password: {{password}}
+```
+
+- a field in stringData overwrites same field in data
+- The keys of data and stringData must consist of alphanumeric characters, ‘-’, ‘\_’ or ‘.’.
+-
+```
+spec:
+  containers:
+  - name: mypod
+    image: redis
+    volumeMounts:
+    - name: foo
+      mountPath: "/etc/foo"
+      readOnly: true
+  volumes:
+  - name: foo
+    secret:
+      secretName: mysecret
+      items:
+      - key: username
+        path: my-group/my-username
+```
+- inside pod, secrets will be saved as non-encoded
+- if `.items` is specified, only specified keys will be mounted to specified path (and filename - so username will be saved in `my-username` file)
+- default permission to files is 0644, but can be modified by `.volume.secret.defaultMode` - but have to use decimal number as json/yaml doesn't support octal notation. so for 0400, you have to use 256
+- `.volume.secret.items.mode` can set permission to separate files
+- QJenny file permissin don't match inside the pod
+- updates secrets and configmaps after every periodin sync, using the `ConfigMapAndSecretChangeDetectionStrategy` field in `kubeletConfiguration` in `kubernetes/staging/src/k8s.io/kubelet/config/v1beta1/types.go`
+- total time is kubelet sync period + cache propagation delay
+- subPath doesn't receive secret updates
+- can also get env
+```
+spec:
+  containers:
+  - name: mycontainer
+    image: redis
+    env:
+      - name: SECRET_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: mysecret
+            key: username
+      - name: SECRET_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: mysecret
+            key: password
+```
+- UJenny imagePullRegistry, private image
+- When deploying applications that interact with the secrets API, access should be limited using authorization policies such as RBAC.
+- The ability to watch and list all secrets in a cluster should be reserved for only the most privileged, system-level components.
+- On most Kubernetes-project-maintained distributions, communication between user to the apiserver, and from apiserver to the kubelets, is protected by SSL/TLS. Secrets are protected when transmitted over these channels.
+- In the API server secret data is stored as plaintext in etcd
+- anyone with root on any node can read any secret from the apiserver, by impersonating the kubelet.
+
+
+## Accessing Cluster
+
+### with kubectl proxy
+- `kubectl proxy --port=8080 &`
+- `curl http://localhost:8080/api/`
+### without kubectl proxy
+```
+$ APISERVER=$(kubectl config view --minify | grep server | cut -f 2- -d ":" | tr -d " ")
+$ TOKEN=$(kubectl describe secret $(kubectl get secrets | grep "^default" | cut -f1 -d ' ') | grep -E '^token' | cut -f2 -d':' | tr -d " ")
+$ curl $APISERVER/api --header "Authorization: Bearer $TOKEN" --insecure
+{
+  "kind": "APIVersions",
+  "versions": [
+    "v1"
+  ],
+  "serverAddressByClientCIDRs": [
+    {
+      "clientCIDR": "0.0.0.0/0",
+      "serverAddress": "10.0.1.149:443"
+    }
+  ]
+}
+```
+- `--insecure` leaves it subject to MITM attack
+- `kubectl cluster-info`
+
+### services, proxies, https, tcp, udp, links - UJenny
+- https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-services-running-on-the-cluster
+
+
+## [Service Account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
+
+- `serviceaccount.automountServiceAccountToken: false` or `pod.spec.automountServiceAccountToken: false` to opt out of automounting API credentials for a particular pod. `pod.` overwrites `service.`
+- creating a service account will create a secret, which has `kubernetes.io/service-account-token` as type. when the service-account is deleted, the secret is deleted too
+- you can use that service-account in pods now, but it has to be created before that pod
+- you can create a secret manually - `secret.metadata.annotations` setting to `kubernetes.io/service-account.name: <svcac-name>` and `secret.type` setting `kubernetes.io/service-account-token`
+```
+kubectl create -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: build-robot-secret
+  annotations:
+    kubernetes.io/service-account.name: build-robot
+type: kubernetes.io/service-account-token
+```
+now you can see that this secret contains ca.crt, token from that svcac (service-account)
+
+### ImagePullSecrets
+- `https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod`
+- `https://stackoverflow.com/questions/36232906/how-to-access-private-docker-hub-repository-from-kubernetes-on-vagrant`
+```
+DOCKER_REGISTRY_SERVER=docker.io
+DOCKER_USER=Type your dockerhub username, same as when you `docker login`
+DOCKER_EMAIL=Type your dockerhub email, same as when you `docker login`
+DOCKER_PASSWORD=Type your dockerhub pw, same as when you `docker login`
+
+kubectl create secret docker-registry myregistrykey \
+  --docker-server=$DOCKER_REGISTRY_SERVER \
+  --docker-username=$DOCKER_USER \
+  --docker-password=$DOCKER_PASSWORD \
+  --docker-email=$DOCKER_EMAIL
+```
+- this will create a secret with type `kubernetes.io/dockerconfigjson`
+- If you need access to multiple registries, you can create one secret for each registry. Kubelet will merge any imagePullSecrets into a single virtual .docker/config.json when pulling images for your Pods.
+
+
+- create a private repo in docker hub, create that secret, add this to default service account as `serviceaccount.imagePullSecrets`, now createa a pod - which will have `imagePullSecrets` automatically - you can mention the private image and it will pull the image by using your docker credentials
+- or you can add `pod.spec.imagePullSecrets` to the pod with adding it to service account
+
+
+
+## Projected Volume
+- https://kubernetes.io/docs/concepts/storage/volumes/#projected
+- https://kubernetes.io/docs/tasks/configure-pod-container/configure-projected-volume-storage/
+- allows secret, downwardAPI, configMap, serviceAccountToken
+- multiple ^these into one directory
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-test
+spec:
+  containers:
+  - name: container-test
+    image: busybox
+    volumeMounts:
+    - name: all-in-one
+      mountPath: "/projected-volume"
+      readOnly: true
+  volumes:
+  - name: all-in-one
+    projected:
+      sources:
+      - secret:
+          name: mysecret
+          items:
+            - key: username
+              path: my-group/my-username
+      - downwardAPI:
+          items:
+            - path: "labels"
+              fieldRef:
+                fieldPath: metadata.labels
+            - path: "cpu_limit"
+              resourceFieldRef:
+                containerName: container-test
+                resource: limits.cpu
+      - configMap:
+          name: myconfigmap
+          items:
+            - key: config
+              path: my-group/my-config
+```
+
+
+
+## AuthN/Z
+- `.kube/config` has certificate presented by API server
+- TLS - Transport Layer Security - cryptographic protocol that provides end-to-end communications security over networks
+
+
+
+
+
+
+
+
+
 
 
 # To Gutaguti
