@@ -2,3 +2,4 @@
 - Understanding ASCII and Unicode - https://www.youtube.com/watch?v=5aJKKgSEUnY
 - Inside the Map Implementation (Go) - https://www.youtube.com/watch?v=Tl7mi9QmLns
 - ^ in written words by dave cheney - https://dave.cheney.net/2018/05/29/how-the-go-runtime-implements-maps-efficiently-without-generics
+- How https works/public-private key: https://strongarm.io/blog/how-https-works/

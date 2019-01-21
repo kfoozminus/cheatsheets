@@ -2325,6 +2325,28 @@ spec:
 - TLS - Transport Layer Security - cryptographic protocol that provides end-to-end communications security over networks
 
 
+---
+- from khata
+---
+
+- how to change api-server port?
+
+
+## AuthN
+- users can be 2 types -
+- service account - created manually by k8s or through API call
+- normal users - they're not objects or cannot be created by calling API
+- request are from ^them or annonymous user
+- all of them must authenticate
+
+- k8s uses client certificate, bearer tokens, authenticating proxy or HTTP basic auth
+- request has username(string), uid(string), groups(set of strings), extra fields(map of strings, additional information)
+- these values are opaque to authN, reserved for authZ
+- should have at least 2 authN method - one for svcac, at least one for user authN
+- multiple authN module - no order - first one to authenticate short-circuits evaluation
+- list of authenticated users has `system:authenticated`
+
+
 
 
 
