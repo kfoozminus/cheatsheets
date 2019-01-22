@@ -2325,10 +2325,63 @@ spec:
 - TLS - Transport Layer Security - cryptographic protocol that provides end-to-end communications security over networks
 
 
----
-- from khata
----
+### authentication
+- apiserver runs authN modules
+- http req --> header/client certificate
+- authN modules have client certificates, password, Plain/JWT(for svcac)/Bootstrap tokens.
+- if multiple modules, only one have to be succeded
+- rejected with 401 (Unauthorized)
+- accepted/authenticated as a username
 
+
+### authorization
+- request {username, action, the object to be modified}
+- suppose you have a abac policy
+- `kubernetes/pkg/apis/abac/v1beta1/types.go`
+```
+{
+    "apiVersion": "abac.authorization.kubernetes.io/v1beta1",
+    "kind": "Policy",
+    "spec": {
+        "user": "bob",
+        "namespace": "projectCaribou",
+        "resource": "pods",
+        "readonly": true
+    }
+}
+```
+- and you have
+```
+{
+  "apiVersion": "authorization.k8s.io/v1beta1",
+  "kind": "SubjectAccessReview",
+  "spec": {
+    "resourceAttributes": {
+      "namespace": "projectCaribou",
+      "verb": "get",
+      "group": "unicorn.example.org",
+      "resource": "pods"
+    }
+  }
+}
+```
+- different authZ modules - RBAC, ABAC, webhook mode
+- if multiple, each one must authorize
+- rejected with 403 (Forbidden)
+
+
+### admission control modules
+- modifies, rejects reqs
+- addition to authZ modules, they can access objects that are being created/deleted/updated/connected(proxy), but not reads
+- if multiple, each called in order
+- if rejected, immediately rejected
+- it can also set complex defaults for fields
+- if passed, it is validated using validation routines - then written to object store
+
+### apiserver ports and ips
+- QJenny https://kubernetes.io/docs/reference/access-authn-authz/controlling-access/#api-server-ports-and-ips
+- localhost port 8080, no TLS, no authN/Z, only admission control
+- secure port 6443, TLS, authN/Z, admission control
 - how to change api-server port?
 
 
@@ -2339,16 +2392,115 @@ spec:
 - request are from ^them or annonymous user
 - all of them must authenticate
 
+### AuthN Strategies
 - k8s uses client certificate, bearer tokens, authenticating proxy or HTTP basic auth
 - request has username(string), uid(string), groups(set of strings), extra fields(map of strings, additional information)
 - these values are opaque to authN, reserved for authZ
 - should have at least 2 authN method - one for svcac, at least one for user authN
 - multiple authN module - no order - first one to authenticate short-circuits evaluation
-- list of authenticated users has `system:authenticated`
+- The `system:authenticated` group is included in the list of groups for all authenticated users.
+
+#### x.509 certs
+- by passing `--client-ca-file=SOMEFILE` to apiserver
+- `openssl req -new -key jbeda.pem -out jbeda-csr.pem -subj "/CN=jbeda/O=app1/O=app2"`
+- that will create a CSR (certificate signing request) for the username `CN` and for the groups `O`
+
+#### Static Token File
+- apiserver reads tokens from a file `--token-auth-file=SOMEFILE`
+- lasts indefinitely, cannot be changed without restarting API server
+- The token file is a csv file with a minimum of 3 columns: token, user name, user uid, followed by optional group names.
+- `token,user,uid,"group1,group2,group3"` if you have more than one group
+- `Authorization: Bearer 31ada4fd-adec-460c-809a-9e56ceb75269` if it is used in HTTP req header
+
+#### Bootstrap Tokens
+- dynamically managed bearer token
+- stored in secrets in `kube-system` namespace
+- has expiration, deleted by TokenCleaner controller
+- tokens are of the form [a-z0-9]{6}.[a-z0-9]{16} - {token-id}.{token-secret}
+- `Authorization: Bearer 781292.db7bc3a58fc5f07e`
+- must enable the Bootstrap Token Authenticator with the `--enable-bootstrap-token-auth` flag on the API Server and TokenCleaner controller via the `--controllers` flag on the Controller Manager
+- authenticates as `system:bootstrap:<token-id>` (like username for x509 cert) and included in `system:bootstrapers` groups
+
+#### Static Password File
+- basic auth is enabled by passing `--basic-auth-file=SOMEFILE` to apiserver
+- lasts indefinitely, cannot be changed without restarting apiserver
+- basic auth file is a csv file with a minimum of 3 columns: password, user name, user id
+- `Authorization: Basic <base64-encoded-user:password>` if used in HTTP client req header
+
+#### Service Account Tokens
+- `.minikube` has every key
+- `--service-account-key-file` contains PEM encoded key for signing bearer tokens, if unspecified, api server's TLS private key is used
+- `--service-account-lookup` provokes deleted tokens
+- svcac tokens are automatically loaded into pods
+- these tokens can be used outside the cluster too, e.g, in case for long standing jobs that wish to talk to k8s api
+- svcac-secrets contain public ca of api-server and a signed json web token (signed by apiserver private key)
+- both are base64 encoded (including namespace too), because secrets are always base64 encoded
+- authenticated as the username `system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)` and assigned to the groups `system:serviceaccounts` and `system:serviceaccounts:(NAMESPACE)`
+```
+apiVersion: v1
+data:
+  ca.crt: (APISERVER'S CA BASE64 ENCODED)
+  namespace: ZGVmYXVsdA==
+  token: (BEARER TOKEN BASE64 ENCODED)
+kind: Secret
+metadata:
+  # ...
+type: kubernetes.io/service-account-token
+```
+
+
+#### OpenID Connect Tokens
+- https://kubernetes.io/docs/reference/access-authn-authz/authentication/#openid-connect-tokens
+
+
+#### Webhook Token Authentication
+- `--authentication-token-webhook-config-file` is a config file which describes how to access remote webhook service
+- `--authentication-token-webhook-cache-ttl` how long to cache authN decision. defaults 2 mins
+- config file is in the kubeconfig format (like `kubectl config view`) - clusters are remote service and users are API server webhook
+```
+# Kubernetes API version
+apiVersion: v1
+# kind of the API object
+kind: Config
+# clusters refers to the remote service.
+clusters:
+  - name: name-of-remote-authn-service
+    cluster:
+      certificate-authority: /path/to/ca.pem         # CA for verifying the remote service.
+      server: https://authn.example.com/authenticate # URL of remote service to query. Must use 'https'.
+
+# users refers to the API server's webhook configuration.
+users:
+  - name: name-of-api-server
+    user:
+      client-certificate: /path/to/cert.pem # cert for the webhook plugin to use
+      client-key: /path/to/key.pem          # key matching the cert
+
+# kubeconfig files require a context. Provide one for the API server.
+current-context: webhook
+contexts:
+- context:
+    cluster: name-of-remote-authn-service
+    user: name-of-api-sever
+  name: webhook
+```
 
 
 
 
+
+## Authenticating with Bootstrap Tokens
+- simple bearer token that is used to create new clusters or join new nodes to an existing cluster
+- can support kubeadm
+- can also be used in other contexts for users that wish to start clusters without kubeadm
+- also built to work with kubelet tls bootstrapping, via RBAC
+
+- secrets in `kube-system`
+- read by Bootstrap authenticator
+- these tokens are also used to create a signature for a specific ConfigMap, used by BootstrapSigner controller
+- `[a-z0-9]{6}\.[a-z0-9]{16}`
+- token-id can be public, to refer a token. token-secret should be only shared to trusted parties
+- Bootstrap token authN can be enabled by `--enable-bootstrap-token-auth`
 
 
 
