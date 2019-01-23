@@ -2489,19 +2489,109 @@ contexts:
 
 
 
-## Authenticating with Bootstrap Tokens
+## [Authenticating with Bootstrap Tokens](https://kubernetes.io/docs/reference/access-authn-authz/bootstrap-tokens/)
 - simple bearer token that is used to create new clusters or join new nodes to an existing cluster
 - can support kubeadm
 - can also be used in other contexts for users that wish to start clusters without kubeadm
 - also built to work with kubelet tls bootstrapping, via RBAC
 
 - secrets in `kube-system`
+- secrets of type `bootstrap.kubernetes.io/token`
+- secret name must be `bootstrap-token-<token id>`
 - read by Bootstrap authenticator
 - these tokens are also used to create a signature for a specific ConfigMap, used by BootstrapSigner controller
 - `[a-z0-9]{6}\.[a-z0-9]{16}`
 - token-id can be public, to refer a token. token-secret should be only shared to trusted parties
 - Bootstrap token authN can be enabled by `--enable-bootstrap-token-auth`
+- `--controllers=*,tokencleaner`
 
+
+
+
+- to use with `kubeadm`, see - https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-token/
+
+
+
+
+### configMap signining
+- `--controllers=*,bootstrapsigner`
+- HS256, by signed by token-secret
+
+
+
+
+## Managing Service Accounts
+- user account: for human, non-namespaced
+- service account: for processes like pods, namespaced
+
+#### Service account admission controller
+- it adds default svcac to pod
+- adds imagePullSecrets to pod
+- adds volume to the pod which contains a token for API access (default token secret as volume)
+- adds volumeSource to each container at `/var/run/secrets/kubernetes.io/serviceaccount`
+
+- `BoundServiceAccountTokenVolume` to migrate svcac to projected volume
+
+
+#### Token Controller
+- creates secret automatically after svcac creation
+- deletes that secret after svcac deletion
+- ensures svcac referenced in the secret exists
+- removes secret from svcac if needed
+- pass `--service-account-private-key-file` to token controller to sign generated service account tokens
+- pass corresponding public key by `--service-account-key-file` to kube-apiserver, to verify the tokens during authentication
+
+
+
+
+
+## AuthZ
+- https://kubernetes.io/docs/reference/access-authn-authz/authorization/
+- req attributes - https://kubernetes.io/docs/reference/access-authn-authz/authorization/#review-your-request-attributes
+- [verbs](https://kubernetes.io/docs/reference/access-authn-authz/authorization/#determine-the-request-verb) - post, get, put, patch, delete, use, bind, impersonate
+
+
+### AuthZ Modules
+- Node AuthZ
+- ABAC - attribute based access control
+- RBAC - role based access control - start apiserver `--authorization-mode=RBAC` to enable
+- Webhook - A WebHook is an HTTP callback: an HTTP POST that occurs when something happens; a simple event-notification via HTTP POST. A web application implementing WebHooks will POST a message to a URL when certain things happen.
+
+
+
+- `kubectl auth can-i create deployments --namespace dev` checks if current user can perform a action, uses `SelfSubjectAccessReview`
+- `kubectl auth can-i list secrets --namespace dev --as dave` user impersonation
+- SelfSubjectAccessReview is part of the authorization.k8s.io API group
+- SubjectAccessReview
+- LocalSubjectAccessReview
+- SelfSubjectRulesReview
+
+```
+kubectl create -f - -o yaml << EOF
+apiVersion: authorization.k8s.io/v1
+kind: SelfSubjectAccessReview
+spec:
+  resourceAttributes:
+    group: apps
+    resource: deployments
+    verb: create
+    namespace: dev
+EOF
+```
+returns the response in status field
+
+
+### Flags for AuthZ Module
+- `--authorization-mode` = ABAC, RBAC, Webhook, Node, AlwaysDeny, AlwaysAllow
+
+
+## Using RBAC Authorization
+
+
+
+
+
+## DIY extended api server
 
 
 
