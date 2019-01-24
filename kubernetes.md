@@ -2593,6 +2593,20 @@ returns the response in status field
 
 ## DIY extended api server
 
+- 3 CA (self-signed)
+- 1. `serving CA`: signs serving certs. main and addon apiserver. could be same or different. in real setup, addon apiserver CA shouldn't be self signed
+- 2. `client CA`: signs client certs. same or different maybe used in case of main and addon. using same CA ensures that identity trust works same way for both
+- 3. `requestHeader CA`: signs proxy client certs. these clients are effectively trusted to pretend as anyone else. this ca MUST sign aggregator's proxy client cert, if any
+
+
+- .crt = public cert, .key = private key
+- apiserver.pem = public cert, apiserver-key.pem = private key
+
+
+- 3 client authentication:
+- 1. `client cert authN`: default admin user of a cluster/off-cluster non-human clients. `--client-ca-file` to apiserver while creating, or change args in `/etc/kubernetes/kube-apiserver`. creates a `ConfigMap` in `kube-system` ns name `extension-apiserver-authentication`, populated with a client-ca and requestheader-client-ca. addon apiserver can use this ca file too (that way it can authenticate clients who are authenticated by main apiserver). pass `--client-ca-file` to addon server if you use different ca file
+- 2. 
+
 
 
 
