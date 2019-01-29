@@ -1,0 +1,12 @@
+#!/bin/bash
+
+kubectl api-resources --verbs=list -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found --all-namespaces
+
+# namespaced
+#kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found --all-namespaces
+
+# cluster-scoped
+#kubectl api-resources --verbs=list --namespaced=false -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found
+
+# with label
+# kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -l <label>=<value> -n default
