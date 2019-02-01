@@ -12,6 +12,7 @@ done < in > out
 
 
 
+### tr
 Replace every ' ' by '\n'
 ```
 tr ' ' '\n' < in > out
@@ -27,7 +28,8 @@ Sort strings in a file
 sort < in > out
 ```
 
-Cut - remove sections from each line of file
+### Cut
+remove sections from each line of file
 ```
 cut -f 2- -d ":"
 ```
@@ -35,9 +37,25 @@ cut -f 2- -d ":"
 divides the line in fields by ":", then removes until 2nd field
 
 
-
+### Grep
 ```
 cat a | grep "^jenny"
 cat a | grep "jenny$"
 ```
 finds the lines which start and end with jenny
+
+
+
+### sed
+https://www.geeksforgeeks.org/sed-command-in-unix/
+
+```
+sed 's/unix/linux/' geekfile.txt
+sed 's/unix/linux/2' geekfile.txt
+sed 's/unix/linux/g' geekfile.txt
+sed 's/unix/linux/3g' geekfile.txt
+echo "Welcome To The Geek Stuff" | sed 's/\(\b[A-Z]\)/\(\1\)/g'
+sed '3 s/unix/linux/' geekfile.txt
+sed 's/EVENT_TYPE/create/g;s/DOCUMENT_PATH/users\/marie/g'
+```
+
