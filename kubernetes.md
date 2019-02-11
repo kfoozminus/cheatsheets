@@ -2680,6 +2680,8 @@ https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
 
 
 
+--
 ###### To be cleared:
 - `minikube start` command initializes `kubeadm, kubelet, certs, cluster, kubeconfig`
 - Kubernetes is microservices platform
+--
