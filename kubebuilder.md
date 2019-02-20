@@ -19,3 +19,21 @@ kubebuilder create api --group mygroup --version v1beta1 --kind MyKind
 minikube start
 make install
 make run
+
+
+
+
+## Steps
+- init
+- create api
+- define types.go
+- add status subresource
+```
+// +kubebuilder:subresource:status
+type SampleSource struct {
+  // ...
+}
+```
+- remove deployment - 1. remove +kubebuilder:rbac:deployment 2. deployment object 3. watch deployment
+- edit Reconcile
+- edit types_test.go
