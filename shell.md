@@ -59,3 +59,11 @@ sed '3 s/unix/linux/' geekfile.txt
 sed 's/EVENT_TYPE/create/g;s/DOCUMENT_PATH/users\/marie/g'
 ```
 
+
+
+Remove the lines that doesn' have `cat` (exact match)
+```
+sed -i '/\<cat\>/!d' file1.txt
+
+```
+(Remove `\<` and `\>` if you don't want exact match)

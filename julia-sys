@@ -1,0 +1,8 @@
+ps aux | grep haproxy
+strace -tt -p <pid>
+
+ls -l /proc/<pid>/ -l
+ls -l /proc/<pid>/fd/ -l
+ls -l /proc/<pid>/exe
+cat /proc/<pid>/cmdline
+cat /proc/<pid>/environ | tr '\0' '\n'
